@@ -1,0 +1,169 @@
+====================================================================
+          HUBSABIA - RESUMO COMPLETO DO PROJETO
+====================================================================
+
+ESTRUTURA DO PROJETO
+------------------------------------------------------------
+ HubSabia/ (Monorepo)
+   +-- frontend/      -> Vue 3 + Vite (porta 5173)
+   +-- backend/       -> Node.js + Express + MongoDB (porta 3001)
+   +-- vercel.json    -> Configuracao de deploy na Vercel
+   +-- package.json   -> Scripts e workspaces
+
+
+TECNOLOGIAS USADAS
+------------------------------------------------------------
+Frontend:
+   - Vue.js 3.4+
+   - Vite 5.0+
+   - Vue Router 4.4+
+   - Axios 1.7+
+   - TailwindCSS 3.4+
+
+Backend:
+   - Node.js 18+
+   - Express 4.19+
+   - MongoDB (Mongoose 9.1+)
+   - JWT (jsonwebtoken 9.0+)
+   - bcrypt 6.0+ (hash de senhas)
+   - Groq SDK (IA para chat e extracao)
+   - Multer (upload de PDF)
+   - pdf-parse (extracao de texto)
+
+
+CREDENCIAIS E ACESSOS ATUAIS
+------------------------------------------------------------
+
+ATENCAO - MONGODB ATLAS:
+   Configure no Render ou backend/.env
+   URI: mongodb+srv://<usuario>:<senha>@cluster.mongodb.net/hubsabia
+
+ATENCAO - GROQ API KEY:
+   Configure no painel do Render ou backend/.env
+   Obtenha em: https://console.groq.com/
+
+ATENCAO - JWT SECRET:
+   Gere uma chave segura: openssl rand -base64 32
+   Configure no backend/.env
+
+USUARIO ADMIN PADRAO:
+   Email: admin@hubsabia.com
+   Senha: admin123 (troque em producao!)
+   Role: admin
+   Criado via: npm run create-admin
+
+
+VARIAVEIS DE AMBIENTE (backend/.env)
+------------------------------------------------------------
+   PORT=3001
+   NODE_ENV=development
+   JWT_SECRET=<sua-chave-secreta>
+   MONGODB_URI=<sua-connection-string>
+   GROQ_API_KEY=<sua-groq-api-key>
+   FRONTEND_URL=http://localhost:5173
+   MAX_FILE_SIZE=10485760
+   UPLOAD_DIR=uploads/
+
+
+VARIAVEIS DE AMBIENTE (frontend/.env)
+------------------------------------------------------------
+   VITE_API_URL=http://localhost:3001/api
+   VITE_APP_NAME=HubSabia
+   VITE_APP_VERSION=1.0.0
+
+
+ENDPOINTS DA API
+------------------------------------------------------------
+
+AUTENTICACAO:
+   POST   /api/auth/register   -> Registrar usuario
+   POST   /api/auth/login      -> Login
+   POST   /api/auth/logout     -> Logout
+   GET    /api/auth/me         -> Dados do usuario atual
+   PUT    /api/auth/profile    -> Atualizar perfil
+   GET    /api/auth/users      -> Listar usuarios (admin)
+   DELETE /api/auth/users/:id  -> Deletar usuario (admin)
+
+EDITAIS:
+   POST   /api/edital/upload       -> Upload de PDF (admin)
+   GET    /api/editais             -> Lista todos os editais
+   GET    /api/edital/:id          -> Detalhes de um edital
+   DELETE /api/edital/:id          -> Deletar edital (admin)
+   GET    /api/edital/:id/chunks   -> Trechos de um edital
+
+CHAT:
+   POST   /api/chat/pergunta         -> Fazer pergunta
+   GET    /api/chat/sugestoes/:id    -> Perguntas sugeridas
+   GET    /api/chat/historico        -> Historico de conversas
+
+SAUDE:
+   GET    /api/health              -> Status do servidor
+   GET    /api/debug               -> Debug de conexao
+
+
+ARQUIVOS CRIADOS/MODIFICADOS PARA DEPLOY
+------------------------------------------------------------
+   OK vercel.json                     -> Configuracao Vercel
+   OK backend/src/server-vercel.js    -> Backend serverless
+   OK backend/src/api/index.js        -> Entry point Vercel
+   OK backend/src/config/database.js  -> MongoDB otimizado p/ serverless
+   OK backend/.env.example            -> Atualizado
+   OK frontend/.env.example           -> Atualizado
+   OK frontend/src/services/api.js    -> Mensagem generica
+   OK DEPLOY.md                       -> Guia completo de deploy
+   OK README.md                       -> Atualizado c/ deploy
+   OK COMECE_AQUI.md                  -> Atualizado c/ deploy
+   OK package.json                    -> Scripts Vercel
+
+
+COMO RODAR LOCALMENTE
+------------------------------------------------------------
+
+Terminal 1 - Backend:
+   cd backend
+   npm run dev
+
+Terminal 2 - Frontend:
+   cd frontend
+   npm run dev
+
+Acessar:
+   Frontend: http://localhost:5173
+   Backend:  http://localhost:3001/api/health
+
+
+COMO FAZER DEPLOY NA VERCEL
+------------------------------------------------------------
+
+1. npm i -g vercel
+2. vercel login
+3. vercel --prod
+
+Variaveis para configurar no painel da Vercel:
+   MONGODB_URI  -> Sua connection string do MongoDB Atlas
+   JWT_SECRET   -> Gere uma nova chave secreta
+   GROQ_API_KEY -> Sua chave da API Groq
+   VITE_API_URL -> /api (ou URL do backend Render)
+
+
+PIPELINE RAG (RESUMO)
+------------------------------------------------------------
+1. Upload PDF -> extracao de texto (pdf-parse)
+2. Chunking -> divide texto em blocos (~800 chars)
+3. Embeddings -> vetores de cada chunk (Transformers.js)
+4. Armazenamento -> MongoDB (chunks + vetores)
+5. Consulta -> embedding da pergunta + similaridade cosseno
+6. Resposta -> Groq AI gera resposta baseada nos chunks relevantes
+
+
+OBSERVACOES DE SEGURANCA
+------------------------------------------------------------
+ATENCAO  NUNCA commite o arquivo .env com senhas reais no Git!
+ATENCAO  Troque JWT_SECRET em producao (gere com: openssl rand -base64 32)
+ATENCAO  Use variaveis de ambiente no painel do Render/Vercel
+ATENCAO  Adicione .env ao .gitignore
+
+
+====================================================================
+                    RESUMO FINALIZADO!
+====================================================================

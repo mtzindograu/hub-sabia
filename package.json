@@ -1,0 +1,39 @@
+{
+  "name": "hubsabia",
+  "version": "1.0.0",
+  "description": "HubSabia - Academic Notice AI System with RAG",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "start": "npm run start --workspace=backend",
+    "install:all": "npm install && npm install --workspace=frontend && npm install --workspace=backend",
+    "vercel:build": "npm run build --workspace=frontend",
+    "vercel:install": "npm install && npm install --workspace=frontend && npm install --workspace=backend",
+    "preview": "npm run preview --workspace=frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "rag",
+    "ai",
+    "education",
+    "supabase",
+    "gemini",
+    "vue",
+    "express"
+  ],
+  "author": "HubSabia Team",
+  "license": "MIT",
+  "dependencies": {
+    "groq-sdk": "^1.1.1"
+  }
+}
