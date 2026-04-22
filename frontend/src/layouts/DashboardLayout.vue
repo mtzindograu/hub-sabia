@@ -6,16 +6,19 @@
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ collapsed: isCollapsed }">
       <div class="sidebar-header">
-        <div class="sidebar-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-          </svg>
-          <span v-if="!isCollapsed" class="logo-text">HubSabia</span>
+        <div class="sidebar-logo" v-if="!isCollapsed">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+          </div>
+          <span class="logo-text">HubSabia</span>
         </div>
-        <button class="collapse-btn" @click="toggleCollapse">
+        
+        <button class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? 'Expandir' : 'Recolher'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline :points="isCollapsed ? '13 17 18 12 13 7' : '11 17 6 12 11 7'" />
-            <polyline :points="isCollapsed ? '6 17 11 12 6 7' : ''" v-if="!isCollapsed" />
+            <polyline :points="isCollapsed ? '9 18 15 12 9 6' : '11 17 6 12 11 7'" />
+            <polyline points="18 17 13 12 18 7" v-if="!isCollapsed" />
           </svg>
         </button>
       </div>
@@ -38,20 +41,22 @@
           class="nav-item"
           :class="{ active: isActive(item.path) }"
         >
-          <component :is="item.icon" class="nav-icon" />
-          <span v-if="!isCollapsed">{{ item.label }}</span>
+          <div class="nav-icon" v-html="item.icon"></div>
+          <span v-if="!isCollapsed" class="nav-label">{{ item.label }}</span>
         </router-link>
       </nav>
 
       <!-- Logout -->
       <div class="sidebar-footer">
         <button class="nav-item logout-btn" @click="handleLogout">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          <span v-if="!isCollapsed">Sair</span>
+          <div class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+          </div>
+          <span v-if="!isCollapsed" class="nav-label">Sair</span>
         </button>
       </div>
     </aside>
@@ -63,6 +68,7 @@
           <h1 class="page-title">{{ pageTitle }}</h1>
         </div>
         <div class="header-right">
+          <ThemeToggle />
           <router-link to="/" class="btn-ghost">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
               <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -84,6 +90,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { logout } from '../services/api.js'
 import ToastContainer from '../components/ToastContainer.vue'
+import ThemeToggle from '../components/ThemeToggle.vue'
 import { info } from '../utils/toast.js'
 
 const props = defineProps({
@@ -97,7 +104,6 @@ const router = useRouter()
 const route = useRoute()
 const isCollapsed = ref(false)
 
-// User info
 const currentUser = ref(null)
 
 const userName = computed(() => currentUser.value?.nome || currentUser.value?.email?.split('@')[0] || 'Usuário')
@@ -108,66 +114,29 @@ const userInitials = computed(() => {
 const userRole = computed(() => currentUser.value?.role || 'user')
 const userRoleLabel = computed(() => userRole.value === 'admin' ? 'Administrador' : 'Usuário')
 
-// Menu items based on role
+const Icons = {
+  Dashboard: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+  Edital: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+  Chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  Users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  Alunos: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  Profile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+}
+
 const menuItems = computed(() => {
   const isAdmin = userRole.value === 'admin'
-
-  if (isAdmin) {
-    return [
-      {
-        path: '/admin/dashboard',
-        label: 'Dashboard',
-        icon: Icons.Dashboard
-      },
-      {
-        path: '/admin/editais',
-        label: 'Editais',
-        icon: Icons.Edital
-      },
-      {
-        path: '/admin/chat',
-        label: 'Chat IA',
-        icon: Icons.Chat
-      },
-      {
-        path: '/admin/usuarios',
-        label: 'Usuários',
-        icon: Icons.Users
-      },
-      {
-        path: '/admin/perfil',
-        label: 'Meu Perfil',
-        icon: Icons.Profile
-      }
-    ]
-  }
-
-  return [
-    {
-      path: '/dashboard',
-      label: 'Dashboard',
-      icon: Icons.Dashboard
-    },
-    {
-      path: '/editais',
-      label: 'Editais',
-      icon: Icons.Edital
-    },
-    {
-      path: '/chat',
-      label: 'Chat IA',
-      icon: Icons.Chat
-    },
-    {
-      path: '/chat-alunos',
-      label: 'Chat Alunos',
-      icon: Icons.Alunos
-    },
-    {
-      path: '/perfil',
-      label: 'Meu Perfil',
-      icon: Icons.Profile
-    }
+  return isAdmin ? [
+    { path: '/admin/dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+    { path: '/admin/editais', label: 'Editais', icon: Icons.Edital },
+    { path: '/admin/chat', label: 'Chat IA', icon: Icons.Chat },
+    { path: '/admin/usuarios', label: 'Usuários', icon: Icons.Users },
+    { path: '/admin/perfil', label: 'Meu Perfil', icon: Icons.Profile }
+  ] : [
+    { path: '/dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+    { path: '/editais', label: 'Editais', icon: Icons.Edital },
+    { path: '/chat', label: 'Chat IA', icon: Icons.Chat },
+    { path: '/chat-alunos', label: 'Chat Alunos', icon: Icons.Alunos },
+    { path: '/perfil', label: 'Meu Perfil', icon: Icons.Profile }
   ]
 })
 
@@ -199,76 +168,31 @@ function loadUser() {
 onMounted(() => {
   loadUser()
 })
-
-// Icons as components
-const Icons = {
-  Dashboard: {
-    template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="3" y="3" width="7" height="7" rx="1"/>
-      <rect x="14" y="3" width="7" height="7" rx="1"/>
-      <rect x="3" y="14" width="7" height="7" rx="1"/>
-      <rect x="14" y="14" width="7" height="7" rx="1"/>
-    </svg>`
-  },
-  Edital: {
-    template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-    </svg>`
-  },
-  Chat: {
-    template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>`
-  },
-  Users: {
-    template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>`
-  },
-  Alunos: {
-    template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-    </svg>`
-  },
-  Profile: {
-    template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
-    </svg>`
-  }
-}
 </script>
 
 <style scoped>
 .dashboard-layout {
   display: flex;
-  min-height: calc(100vh - 64px);
+  min-height: 100vh;
   background: var(--color-bg);
 }
 
-/* Sidebar */
 .sidebar {
   width: 260px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  transition: width var(--transition-slow);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: sticky;
-  top: 64px;
-  height: calc(100vh - 64px);
-  overflow-y: auto;
-  box-shadow: var(--shadow-sm);
+  top: 0;
+  height: 100vh;
+  z-index: 50;
+  flex-shrink: 0;
 }
 
 .sidebar.collapsed {
-  width: 72px;
+  width: 80px;
 }
 
 .sidebar-header {
@@ -277,38 +201,53 @@ const Icons = {
   justify-content: space-between;
   padding: 1.25rem 1rem;
   border-bottom: 1px solid var(--color-border);
+  min-height: 73px;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+  padding: 1.25rem 0.5rem;
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  overflow: hidden;
 }
 
-.sidebar-logo svg {
-  width: 28px;
-  height: 28px;
-  color: var(--color-primary-600);
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--color-primary-600);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  color: white;
+}
+
+.logo-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .logo-text {
   font-size: 1.25rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--color-text);
+  white-space: nowrap;
 }
 
 .collapse-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.375rem;
+  padding: 0.5rem;
   border-radius: var(--radius-md);
   color: var(--color-gray-500);
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,21 +255,25 @@ const Icons = {
 
 .collapse-btn:hover {
   background: var(--color-surface-2);
-  color: var(--color-gray-700);
+  color: var(--color-primary-600);
 }
 
 .collapse-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
 }
 
-/* User Info */
 .sidebar-user {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem;
+  padding: 1.25rem 1rem;
   border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar.collapsed .sidebar-user {
+  justify-content: center;
+  padding: 1.25rem 0.5rem;
 }
 
 .user-avatar {
@@ -341,11 +284,10 @@ const Icons = {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-inverse);
+  color: white;
   font-weight: 600;
   font-size: 0.875rem;
   flex-shrink: 0;
-  box-shadow: var(--shadow-primary);
 }
 
 .user-info {
@@ -357,7 +299,7 @@ const Icons = {
 .user-name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--color-gray-900);
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -365,21 +307,20 @@ const Icons = {
 
 .user-role {
   font-size: 0.75rem;
-  color: var(--color-gray-500);
+  color: var(--color-text-muted);
 }
 
-.user-role.admin {
-  color: var(--color-primary-600);
-  font-weight: 500;
-}
-
-/* Navigation */
 .sidebar-nav {
   flex: 1;
-  padding: 0.75rem 0.5rem;
+  padding: 1rem 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+.sidebar.collapsed .sidebar-nav {
+  padding: 1rem 0.5rem;
+  align-items: center;
 }
 
 .nav-item {
@@ -388,21 +329,24 @@ const Icons = {
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: var(--radius-md);
-  color: var(--color-gray-600);
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
-  transition: all var(--transition-fast);
-  cursor: pointer;
-  border: none;
-  background: none;
+  transition: all 0.2s;
   width: 100%;
-  text-align: left;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 0.75rem 0;
+  width: 48px;
+  height: 48px;
 }
 
 .nav-item:hover {
   background: var(--color-surface-2);
-  color: var(--color-gray-900);
+  color: var(--color-primary-600);
 }
 
 .nav-item.active {
@@ -411,24 +355,47 @@ const Icons = {
   font-weight: 600;
 }
 
-.nav-item.active:hover {
-  background: var(--color-primary-100);
-}
-
 .nav-icon {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Logout */
+.nav-icon :deep(svg), .nav-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .sidebar-footer {
-  padding: 0.75rem 0.5rem;
+  padding: 1rem 0.75rem;
   border-top: 1px solid var(--color-border);
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 1rem 0.5rem;
+  display: flex;
+  justify-content: center;
 }
 
 .logout-btn {
   color: var(--color-danger-500);
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+}
+
+.sidebar.collapsed .logout-btn {
+  justify-content: center;
+  padding: 0.75rem 0;
+  width: 48px;
 }
 
 .logout-btn:hover {
@@ -436,7 +403,6 @@ const Icons = {
   color: var(--color-danger-600);
 }
 
-/* Main Content */
 .main-content {
   flex: 1;
   display: flex;
@@ -448,22 +414,23 @@ const Icons = {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 2rem;
+  padding: 1rem 2rem;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
+  min-height: 73px;
 }
 
 .page-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-gray-900);
+  color: var(--color-text);
   margin: 0;
 }
 
 .header-right {
   display: flex;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 1rem;
 }
 
 .btn-ghost {
@@ -472,64 +439,38 @@ const Icons = {
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
-  color: var(--color-gray-500);
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
 .btn-ghost:hover {
   background: var(--color-surface-2);
-  color: var(--color-gray-700);
+  color: var(--color-primary-600);
 }
 
-.btn-ghost svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* Page Content */
 .page-content {
   flex: 1;
   padding: 2rem;
+  overflow-y: auto;
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
   .sidebar {
     position: fixed;
     left: 0;
     top: 0;
-    height: 100vh;
-    z-index: 100;
     transform: translateX(-100%);
-    transition: transform var(--transition-slow);
   }
-
   .sidebar.mobile-open {
     transform: translateX(0);
-  }
-
-  .main-content {
-    margin-left: 0;
   }
 }
 
 @media (max-width: 640px) {
-  .top-header {
-    padding: 1rem;
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-
-  .page-content {
-    padding: 1rem;
-  }
-
-  .page-title {
-    font-size: 1.25rem;
-  }
+  .top-header { padding: 1rem; }
+  .page-content { padding: 1.25rem; }
 }
 </style>

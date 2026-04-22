@@ -614,7 +614,7 @@ onMounted(() => {
 /* Deadlines */
 .deadlines-section {
   background: var(--color-warning-50);
-  border: 1px solid #fef3c7;
+  border: 1px solid var(--color-warning-100, rgba(245, 158, 11, 0.2));
   border-radius: var(--radius-lg);
   padding: 1.5rem;
 }
@@ -735,8 +735,8 @@ onMounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  background: var(--color-warning-50);
-  border: 1px solid #fef3c7;
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-100);
   border-radius: var(--radius-md);
   padding: 0.875rem 1rem;
 }
@@ -744,14 +744,14 @@ onMounted(() => {
 .doc-icon {
   width: 18px;
   height: 18px;
-  color: var(--color-warning-600);
+  color: var(--color-primary-600);
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .document-item span {
   font-size: 0.9375rem;
-  color: var(--color-warning-700);
+  color: var(--color-primary-800);
   line-height: 1.5;
   white-space: pre-line;
 }

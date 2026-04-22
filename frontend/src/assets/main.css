@@ -99,6 +99,47 @@
 }
 
 /* ============================================
+   DARK THEME TOKENS
+   ============================================ */
+
+.dark {
+  --color-bg:        #0f172a; /* Slate 900 */
+  --color-surface:   #1e293b; /* Slate 800 */
+  --color-surface-2: #334155; /* Slate 700 */
+  --color-border:    #334155; /* Slate 700 */
+  --color-border-hover: #475569; /* Slate 600 */
+
+  --color-text:          #f8fafc; /* Slate 50 */
+  --color-text-secondary: #cbd5e1; /* Slate 300 */
+  --color-text-muted:    #94a3b8; /* Slate 400 */
+
+  --color-gray-900: #f8fafc;
+  --color-gray-800: #f1f5f9;
+  --color-gray-700: #e2e8f0;
+  --color-gray-600: #cbd5e1;
+  --color-gray-500: #94a3b8;
+  --color-gray-400: #64748b;
+  --color-gray-300: #475569;
+  --color-gray-200: #334155;
+  --color-gray-100: #1e293b;
+  --color-gray-50:  #0f172a;
+
+  /* Semantic - Dark mode versions */
+  --color-primary-50:  #052e16; /* Emerald 950 */
+  --color-primary-100: #064e3b; /* Emerald 900 */
+  --color-success-50:  #052e16;
+  --color-warning-50:  #451a03; /* Amber 950 */
+  --color-danger-50:   #450a0a; /* Red 950 */
+  --color-info-50:     #172554; /* Blue 950 */
+
+  /* Shadows for dark mode */
+  --shadow-sm:   0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md:   0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg:   0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl:   0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================
    RESET & BASE
    ============================================ */
 

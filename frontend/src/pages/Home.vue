@@ -15,6 +15,7 @@
           <a href="#recursos" class="nav-link">Recursos</a>
           <a href="#editais" class="nav-link">Editais</a>
           <router-link to="/chat" class="nav-link">Chat IA</router-link>
+          <ThemeToggle />
           <!-- Se logado: mostra Dashboard -->
           <template v-if="isLoggedIn">
             <router-link :to="userRole === 'admin' ? '/admin/dashboard' : '/dashboard'" class="btn btn-primary btn-sm">
@@ -44,6 +45,15 @@
 
       <!-- Mobile Menu -->
       <div v-if="mobileMenuOpen" class="mobile-menu">
+        <div class="mobile-menu-header">
+          <ThemeToggle />
+          <button class="close-menu" @click="mobileMenuOpen = false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
         <a href="#recursos" class="mobile-nav-link" @click="mobileMenuOpen = false">Recursos</a>
         <a href="#editais" class="mobile-nav-link" @click="mobileMenuOpen = false">Editais</a>
         <router-link to="/chat" class="mobile-nav-link" @click="mobileMenuOpen = false">Chat IA</router-link>
@@ -72,12 +82,6 @@
     <section class="hero">
       <div class="hero-bg-pattern"></div>
       <div class="hero-content">
-        <div class="hero-badge">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
-          </svg>
-          Powered by IA
-        </div>
         <h1 class="hero-title">
           Encontre oportunidades e<br class="hide-mobile" />
           <span class="text-gradient">editais com facilidade</span>
@@ -345,6 +349,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { getEditais } from '../services/api.js'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const totalEditais = ref(0)
 const editais = ref([])
@@ -505,6 +510,26 @@ onMounted(async () => {
   padding: 1rem 2rem 1.5rem;
   border-top: 1px solid var(--color-border);
   gap: 0.75rem;
+  background: var(--color-surface);
+}
+
+.mobile-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.5rem;
+}
+
+.close-menu {
+  background: none;
+  border: none;
+  color: var(--color-gray-500);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mobile-nav-link {

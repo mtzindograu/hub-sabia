@@ -288,8 +288,8 @@ async function handleDelete() {
 }
 
 .tag.more {
-  background: var(--color-gray-100);
-  color: var(--color-gray-600);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
   border-color: var(--color-border);
 }
 
@@ -379,8 +379,8 @@ async function handleDelete() {
 /* Botão Excluir (danger) */
 .btn-delete {
   background: var(--color-danger-50);
-  color: var(--color-danger-600);
-  border: 1.5px solid var(--color-danger-100, #fecaca);
+  color: var(--color-danger-500);
+  border: 1.5px solid var(--color-danger-500);
 }
 
 .btn-delete:hover {

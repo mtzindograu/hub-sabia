@@ -107,20 +107,20 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1.25rem;
-  background: #f0fdf4;
-  border-bottom: 1px solid #dcfce7;
+  background: var(--color-primary-50);
+  border-bottom: 1px solid var(--color-primary-100);
   font-size: 0.8125rem;
-  color: #166534;
+  color: var(--color-primary-700);
 }
 
 .info-bar svg {
-  color: #16a34a;
+  color: var(--color-primary-600);
   flex-shrink: 0;
 }
 
 .badge-new {
-  background: #16a34a;
-  color: white;
+  background: var(--color-primary-600);
+  color: var(--color-text-inverse);
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
   font-size: 0.6875rem;
@@ -133,7 +133,7 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
-  background: #f9fafb;
+  background: var(--color-bg);
 }
 
 .welcome-message {
@@ -145,37 +145,37 @@ onMounted(() => {
 .welcome-icon {
   width: 56px;
   height: 56px;
-  background: #f0fdf4;
+  background: var(--color-primary-50);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 1rem;
-  color: #16a34a;
+  color: var(--color-primary-600);
 }
 
 .welcome-message h3 {
   font-size: 1.25rem;
-  color: #111827;
+  color: var(--color-gray-900);
   margin-bottom: 0.5rem;
 }
 
 .welcome-message p {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-gray-500);
   max-width: 400px;
   margin: 0 auto;
 }
 
 .welcome-message a {
-  color: #16a34a;
+  color: var(--color-primary-600);
   font-weight: 500;
 }
 
 .mock-label {
   text-align: center;
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   margin-bottom: 1rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -196,12 +196,12 @@ onMounted(() => {
 .message-avatar {
   width: 32px;
   height: 32px;
-  background: #16a34a;
+  background: var(--color-primary-600);
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-text-inverse);
   font-size: 0.6875rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -214,42 +214,42 @@ onMounted(() => {
 }
 
 .message-bubble.other {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .msg-sender {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #16a34a;
+  color: var(--color-primary-600);
   margin-bottom: 0.25rem;
 }
 
 .msg-sender::after {
   content: '';
   font-weight: 400;
-  color: #9ca3af;
+  color: var(--color-gray-400);
 }
 
 .msg-text {
   font-size: 0.8125rem;
-  color: #374151;
+  color: var(--color-text);
   line-height: 1.4;
 }
 
 /* Input */
 .input-area {
   padding: 1rem 1.25rem;
-  background: white;
-  border-top: 1px solid #e5e7eb;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
 }
 
 .input-wrapper {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 0.5rem 0.75rem;
 }
@@ -263,13 +263,13 @@ onMounted(() => {
   border: none;
   background: transparent;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: var(--color-gray-400);
   outline: none;
   padding: 0.375rem 0;
 }
 
 .send-btn {
-  background: #16a34a;
+  background: var(--color-primary-600);
   border: none;
   border-radius: 8px;
   width: 36px;
@@ -278,18 +278,18 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: white;
+  color: var(--color-text-inverse);
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .send-btn:disabled {
-  background: #d1d5db;
+  background: var(--color-gray-300);
   cursor: not-allowed;
 }
 
 .send-btn:not(:disabled):hover {
-  background: #15803d;
+  background: var(--color-primary-700);
 }
 
 .send-btn svg {

@@ -10,6 +10,7 @@
         <span>HubSabia</span>
       </router-link>
       <div class="header-actions-public">
+        <ThemeToggle />
         <router-link to="/login" class="btn-ghost-login">Entrar</router-link>
         <router-link to="/login?tab=register" class="btn-create-account">Criar Conta</router-link>
       </div>
@@ -200,6 +201,7 @@ import { useRoute, useRouter } from 'vue-router'
 import MessageBubble from '../components/MessageBubble.vue'
 import { askQuestion, getEditais, getSuggestedQuestions } from '../services/api.js'
 import { error as showError } from '../utils/toast.js'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const route = useRoute()
 const router = useRouter()

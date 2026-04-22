@@ -155,7 +155,7 @@ onMounted(async () => {
   border: none;
   background: transparent;
   font-size: 0.9375rem;
-  color: var(--color-gray-900);
+  color: var(--color-text);
   outline: none;
   width: 100%;
 }

@@ -159,7 +159,7 @@ function formatText(text) {
 
 .message-avatar.user {
   background: var(--color-surface-2);
-  color: var(--color-gray-600);
+  color: var(--color-text-secondary);
 }
 
 /* Assistant Message */
@@ -170,7 +170,7 @@ function formatText(text) {
 
 .message-avatar.assistant {
   background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
-  color: var(--color-surface);
+  color: var(--color-text-inverse);
 }
 
 .message-body {
@@ -179,7 +179,8 @@ function formatText(text) {
 }
 
 .assistant-message .message-content {
-  background: var(--color-gray-50);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   border-top-left-radius: var(--radius-sm);
   padding: 1rem 1.25rem;
@@ -187,12 +188,12 @@ function formatText(text) {
 
 .formatted-text {
   line-height: 1.7;
-  color: var(--color-gray-700);
+  color: var(--color-text);
 }
 
 .formatted-text :deep(strong) {
   font-weight: 600;
-  color: var(--color-gray-900);
+  color: var(--color-text);
 }
 
 .formatted-text :deep(ul) {
@@ -218,13 +219,13 @@ function formatText(text) {
   border-radius: var(--radius-md);
   padding: 0.5rem 0.75rem;
   font-size: 0.8125rem;
-  color: var(--color-gray-600);
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .sources-toggle:hover {
-  background: var(--color-gray-50);
+  background: var(--color-surface-2);
 }
 
 .sources-toggle svg {
@@ -265,7 +266,7 @@ function formatText(text) {
 .source-title {
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--color-gray-700);
+  color: var(--color-text);
 }
 
 .source-relevance {
@@ -292,7 +293,7 @@ function formatText(text) {
 
 .source-excerpt {
   font-size: 0.75rem;
-  color: var(--color-gray-500);
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
@@ -302,7 +303,7 @@ function formatText(text) {
   gap: 1rem;
   margin-top: 0.5rem;
   font-size: 0.6875rem;
-  color: var(--color-gray-400);
+  color: var(--color-text-muted);
 }
 
 /* Error Message */
@@ -312,13 +313,13 @@ function formatText(text) {
 }
 
 .message-avatar.error {
-  background: #fee2e2;
+  background: var(--color-danger-50);
   color: var(--color-danger-600);
 }
 
 .error-message .message-content {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--color-danger-50);
+  border: 1px solid var(--color-danger-500);
   border-radius: var(--radius-xl);
   border-top-left-radius: var(--radius-sm);
   padding: 0.875rem 1.25rem;

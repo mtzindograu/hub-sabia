@@ -280,7 +280,7 @@ onMounted(async () => {
 }
 
 .welcome-actions .btn {
-  background: white;
+  background: var(--color-surface);
   color: var(--color-primary-700);
   font-weight: 600;
   padding: 0.75rem 1.5rem;
@@ -296,13 +296,14 @@ onMounted(async () => {
 .welcome-actions .btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  background: var(--color-gray-50);
 }
-
-.welcome-actions .btn svg {
-  width: 18px;
-  height: 18px;
+...
+.action-icon-wrapper svg {
+  width: 22px;
+  height: 22px;
+  color: var(--color-text-inverse);
 }
-
 /* Stats Grid */
 .stats-grid {
   display: grid;

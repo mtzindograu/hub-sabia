@@ -2,13 +2,16 @@
   <div class="auth-page">
     <div class="auth-container">
       <!-- Back to Home -->
-      <router-link to="/" class="back-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-          <line x1="19" y1="12" x2="5" y2="12"/>
-          <polyline points="12 19 5 12 12 5"/>
-        </svg>
-        Voltar
-      </router-link>
+      <div class="auth-header-top">
+        <router-link to="/" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Voltar
+        </router-link>
+        <ThemeToggle />
+      </div>
 
       <!-- Logo -->
       <div class="auth-logo">
@@ -143,6 +146,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { login, registerUser } from '../services/api.js'
 import { success, error as showError } from '../utils/toast.js'
+import ThemeToggle from '../components/ThemeToggle.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -288,10 +292,14 @@ watch(
   border: 1px solid var(--color-border);
 }
 
+.auth-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
 .back-link {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
