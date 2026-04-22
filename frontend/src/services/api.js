@@ -104,7 +104,7 @@ export async function uploadEdital(formData) {
     headers: {
       "Content-Type": "multipart/form-data",
     },
-    timeout: 60000, // 1 minute for file uploads
+    timeout: 300000, // 5 minutes for file uploads and processing
   });
 }
 

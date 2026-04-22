@@ -196,35 +196,18 @@
     </div>
 
     <!-- Upload Modal -->
-    <div v-if="showUploadModal" class="modal-overlay" @click.self="showUploadModal = false">
-      <div class="modal-card">
-        <div class="modal-header">
-          <div class="modal-icon-wrapper">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-          </div>
-          <h3>Adicionar Edital</h3>
-        </div>
-        <div class="modal-body">
-          <p>Para adicionar um novo edital, acesse a página de <strong>Editais</strong> e use o botão de upload.</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" @click="showUploadModal = false">Fechar</button>
-          <router-link to="/admin/editais" class="btn btn-primary">
-            Ir para Editais
-          </router-link>
-        </div>
-      </div>
-    </div>
+    <EditalUploadModal 
+      v-if="showUploadModal" 
+      @close="showUploadModal = false"
+      @success="loadStats"
+    />
   </DashboardLayout>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import DashboardLayout from '../../layouts/DashboardLayout.vue'
+import EditalUploadModal from '../../components/EditalUploadModal.vue'
 import { getEditais, getAllUsers } from '../../services/api.js'
 import { warning } from '../../utils/toast.js'
 

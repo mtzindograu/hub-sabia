@@ -6,27 +6,29 @@
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ collapsed: isCollapsed }">
       <div class="sidebar-header">
-        <div class="sidebar-logo" v-if="!isCollapsed">
-          <div class="logo-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
+        <div class="header-top-wrapper">
+          <div class="sidebar-logo">
+            <div class="logo-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              </svg>
+            </div>
+            <span v-show="!isCollapsed" class="logo-text">HubSabia</span>
           </div>
-          <span class="logo-text">HubSabia</span>
+          
+          <button class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? 'Expandir' : 'Recolher'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline :points="isCollapsed ? '9 18 15 12 9 6' : '11 17 6 12 11 7'" />
+              <polyline points="18 17 13 12 18 7" v-if="!isCollapsed" />
+            </svg>
+          </button>
         </div>
-        
-        <button class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? 'Expandir' : 'Recolher'">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline :points="isCollapsed ? '9 18 15 12 9 6' : '11 17 6 12 11 7'" />
-            <polyline points="18 17 13 12 18 7" v-if="!isCollapsed" />
-          </svg>
-        </button>
       </div>
 
       <!-- User Info -->
       <div class="sidebar-user">
         <div class="user-avatar">{{ userInitials }}</div>
-        <div v-if="!isCollapsed" class="user-info">
+        <div v-show="!isCollapsed" class="user-info">
           <span class="user-name">{{ userName }}</span>
           <span class="user-role" :class="userRole">{{ userRoleLabel }}</span>
         </div>
@@ -40,15 +42,16 @@
           :to="item.path"
           class="nav-item"
           :class="{ active: isActive(item.path) }"
+          :title="isCollapsed ? item.label : ''"
         >
           <div class="nav-icon" v-html="item.icon"></div>
-          <span v-if="!isCollapsed" class="nav-label">{{ item.label }}</span>
+          <span v-show="!isCollapsed" class="nav-label">{{ item.label }}</span>
         </router-link>
       </nav>
 
       <!-- Logout -->
       <div class="sidebar-footer">
-        <button class="nav-item logout-btn" @click="handleLogout">
+        <button class="nav-item logout-btn" @click="handleLogout" :title="isCollapsed ? 'Sair' : ''">
           <div class="nav-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -56,7 +59,7 @@
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
           </div>
-          <span v-if="!isCollapsed" class="nav-label">Sair</span>
+          <span v-show="!isCollapsed" class="nav-label">Sair</span>
         </button>
       </div>
     </aside>
@@ -120,7 +123,8 @@ const Icons = {
   Chat: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
   Users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   Alunos: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-  Profile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`
+  Profile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  Plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`
 }
 
 const menuItems = computed(() => {
@@ -128,6 +132,7 @@ const menuItems = computed(() => {
   return isAdmin ? [
     { path: '/admin/dashboard', label: 'Dashboard', icon: Icons.Dashboard },
     { path: '/admin/editais', label: 'Editais', icon: Icons.Edital },
+    { path: '/admin/editais?upload=true', label: 'Novo Edital', icon: Icons.Plus },
     { path: '/admin/chat', label: 'Chat IA', icon: Icons.Chat },
     { path: '/admin/usuarios', label: 'Usuários', icon: Icons.Users },
     { path: '/admin/perfil', label: 'Meu Perfil', icon: Icons.Profile }
@@ -187,7 +192,7 @@ onMounted(() => {
   position: sticky;
   top: 0;
   height: 100vh;
-  z-index: 50;
+  z-index: 100;
   flex-shrink: 0;
 }
 
@@ -196,17 +201,25 @@ onMounted(() => {
 }
 
 .sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 1.25rem 1rem;
   border-bottom: 1px solid var(--color-border);
   min-height: 73px;
+  display: flex;
+  align-items: center;
 }
 
-.sidebar.collapsed .sidebar-header {
+.header-top-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+.sidebar.collapsed .header-top-wrapper {
+  flex-direction: column;
   justify-content: center;
-  padding: 1.25rem 0.5rem;
+  gap: 0.5rem;
 }
 
 .sidebar-logo {
@@ -241,7 +254,7 @@ onMounted(() => {
 }
 
 .collapse-btn {
-  background: none;
+  background: var(--color-surface-2);
   border: none;
   cursor: pointer;
   padding: 0.5rem;
@@ -251,10 +264,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .collapse-btn:hover {
-  background: var(--color-surface-2);
+  background: var(--color-primary-50);
   color: var(--color-primary-600);
 }
 
@@ -315,7 +329,7 @@ onMounted(() => {
   padding: 1rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
 .sidebar.collapsed .sidebar-nav {
@@ -389,13 +403,12 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  padding: 0.75rem 1rem;
 }
 
 .sidebar.collapsed .logout-btn {
   justify-content: center;
-  padding: 0.75rem 0;
   width: 48px;
+  height: 48px;
 }
 
 .logout-btn:hover {

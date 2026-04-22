@@ -3,344 +3,431 @@
     <!-- Header para visitantes -->
     <header v-if="!isLoggedIn" class="chat-public-header">
       <router-link to="/" class="btn-back-home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="19" y1="12" x2="5" y2="12"/>
-          <polyline points="12 19 5 12 12 5"/>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="19" y1="12" x2="5" y2="12" />
+          <polyline points="12 19 5 12 12 5" />
         </svg>
         <span>HubSabia</span>
       </router-link>
       <div class="header-actions-public">
         <ThemeToggle />
         <router-link to="/login" class="btn-ghost-login">Entrar</router-link>
-        <router-link to="/login?tab=register" class="btn-create-account">Criar Conta</router-link>
+        <router-link to="/login?tab=register" class="btn-create-account"
+          >Criar Conta</router-link
+        >
       </div>
     </header>
 
     <div class="chat-page">
       <!-- Sidebar -->
-      <aside class="chat-sidebar" :class="{ 'closed': sidebarClosed }">
-      <div class="sidebar-header">
-        <div class="header-top">
-          <h2>HubSabia AI</h2>
-          <button class="close-sidebar" @click="sidebarClosed = true" v-if="!sidebarClosed">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        <p>Faça perguntas sobre editais acadêmicos</p>
-      </div>
-
-      <!-- Edital Selector -->
-      <div class="sidebar-section">
-        <label class="section-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          </svg>
-          Filtrar por Edital
-        </label>
-        <select v-model="selectedEditalId" class="form-select" @change="onEditalChange">
-          <option :value="null">Todos os editais</option>
-          <option v-for="edital in editais" :key="edital.id" :value="edital.id">
-            {{ edital.titulo }} ({{ edital.ano }})
-          </option>
-        </select>
-      </div>
-
-      <!-- Suggested Questions -->
-      <div v-if="suggestedQuestions.length > 0" class="sidebar-section">
-        <label class="section-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          Perguntas Sugeridas
-        </label>
-        <div class="suggested-list">
-          <button
-            v-for="(question, index) in suggestedQuestions"
-            :key="index"
-            class="suggested-item"
-            @click="askSuggested(question)"
-          >
-            {{ question }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Tips -->
-      <div class="sidebar-section tips-section">
-        <label class="section-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-          </svg>
-          Dicas
-        </label>
-        <ul class="tips-list">
-          <li>Seja específico em suas perguntas</li>
-          <li>Pergunte sobre prazos e requisitos</li>
-          <li>Mencione o nome do edital</li>
-        </ul>
-      </div>
-    </aside>
-
-    <!-- Chat Area -->
-    <main class="chat-main">
-      <!-- Toggle Sidebar Button -->
-      <button class="toggle-sidebar" @click="sidebarClosed = false" v-if="sidebarClosed">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8L22 12L18 16"/>
-          <path d="M2 12H22"/>
-        </svg>
-      </button>
-
-      <!-- Messages Container -->
-      <div ref="messagesContainer" class="messages-container">
-        <!-- Welcome Message -->
-        <div v-if="messages.length === 0" class="welcome-message">
-          <div class="welcome-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </div>
-          <h2>Olá! Como posso ajudar?</h2>
-          <p>
-            {{ selectedEditalId 
-              ? 'Faça perguntas sobre este edital específico.' 
-              : 'Selecione um edital ou pergunte sobre todos os editais disponíveis.' }}
-          </p>
-          
-          <!-- Quick Start Buttons -->
-          <div class="quick-start" v-if="editais.length > 0">
-            <button 
-              v-for="edital in editais.slice(0, 3)" 
-              :key="edital.id"
-              class="quick-edital"
-              @click="selectEdital(edital.id)"
+      <aside class="chat-sidebar" :class="{ closed: sidebarClosed }">
+        <div class="sidebar-header">
+          <div class="header-top">
+            <h2>HubSabia AI</h2>
+            <button
+              class="close-sidebar"
+              @click="sidebarClosed = true"
+              v-if="!sidebarClosed"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
-              {{ edital.titulo.slice(0, 30) }}{{ edital.titulo.length > 30 ? '...' : '' }}
+            </button>
+          </div>
+          <p>Faça perguntas sobre editais acadêmicos</p>
+        </div>
+
+        <!-- Edital Selector -->
+        <div class="sidebar-section">
+          <label class="section-label">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              />
+            </svg>
+            Filtrar por Edital
+          </label>
+          <select
+            v-model="selectedEditalId"
+            class="form-select"
+            @change="onEditalChange"
+          >
+            <option :value="null">Todos os editais</option>
+            <option
+              v-for="edital in editais"
+              :key="edital.id"
+              :value="edital.id"
+            >
+              {{ edital.titulo }} ({{ edital.ano }})
+            </option>
+          </select>
+        </div>
+
+        <!-- Suggested Questions -->
+        <div v-if="suggestedQuestions.length > 0" class="sidebar-section">
+          <label class="section-label">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            Perguntas Sugeridas
+          </label>
+          <div class="suggested-list">
+            <button
+              v-for="(question, index) in suggestedQuestions"
+              :key="index"
+              class="suggested-item"
+              @click="askSuggested(question)"
+            >
+              {{ question }}
             </button>
           </div>
         </div>
 
-        <!-- Messages -->
-        <div v-else class="messages-list">
-          <MessageBubble
-            v-for="(message, index) in messages"
-            :key="index"
-            :message="message"
-            :showSources="message.type === 'assistant'"
-          />
+        <!-- Tips -->
+        <div class="sidebar-section tips-section">
+          <label class="section-label">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              />
+            </svg>
+            Dicas
+          </label>
+          <ul class="tips-list">
+            <li>Seja específico em suas perguntas</li>
+            <li>Pergunte sobre prazos e requisitos</li>
+            <li>Mencione o nome do edital</li>
+          </ul>
         </div>
+      </aside>
 
-        <!-- Loading Indicator -->
-        <div v-if="loading" class="loading-message">
-          <div class="loading-bubble">
-            <div class="typing-indicator">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <span class="loading-text">Analisando editais...</span>
-          </div>
-        </div>
-
-        <!-- Scroll to bottom button -->
-        <button 
-          v-show="showScrollButton" 
-          class="scroll-bottom" 
-          @click="scrollToBottom"
+      <!-- Chat Area -->
+      <main class="chat-main">
+        <!-- Toggle Sidebar Button -->
+        <button
+          class="toggle-sidebar"
+          @click="sidebarClosed = false"
+          v-if="sidebarClosed"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 12 15 18 9"/>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M18 8L22 12L18 16" />
+            <path d="M2 12H22" />
           </svg>
         </button>
-      </div>
 
-      <!-- Input Area -->
-      <div class="input-area">
-        <form @submit.prevent="sendMessage" class="input-form">
-          <div class="input-wrapper">
-            <textarea
-              ref="inputField"
-              v-model="userInput"
-              placeholder="Digite sua pergunta sobre editais..."
-              rows="1"
-              @keydown.enter.exact.prevent="sendMessage"
-              @input="autoResize"
-            ></textarea>
-            <button
-              type="submit"
-              class="send-button"
-              :disabled="!userInput.trim() || loading"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        <!-- Messages Container -->
+        <div ref="messagesContainer" class="messages-container">
+          <!-- Welcome Message -->
+          <div v-if="messages.length === 0" class="welcome-message">
+            <div class="welcome-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                />
               </svg>
-            </button>
+            </div>
+            <h2>Olá! Como posso ajudar?</h2>
+            <p>
+              {{
+                selectedEditalId
+                  ? "Faça perguntas sobre este edital específico."
+                  : "Selecione um edital ou pergunte sobre todos os editais disponíveis."
+              }}
+            </p>
+
+            <!-- Quick Start Buttons -->
+            <div class="quick-start" v-if="editais.length > 0">
+              <button
+                v-for="edital in editais.slice(0, 3)"
+                :key="edital.id"
+                class="quick-edital"
+                @click="selectEdital(edital.id)"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                  />
+                </svg>
+                {{ edital.titulo.slice(0, 30)
+                }}{{ edital.titulo.length > 30 ? "..." : "" }}
+              </button>
+            </div>
           </div>
-        </form>
-        <p class="input-hint">
-          Pressione Enter para enviar • IA baseada em RAG
-        </p>
-      </div>
-    </main>
+
+          <!-- Messages -->
+          <div v-else class="messages-list">
+            <MessageBubble
+              v-for="(message, index) in messages"
+              :key="index"
+              :message="message"
+              :showSources="message.type === 'assistant'"
+            />
+          </div>
+
+          <!-- Loading Indicator -->
+          <div v-if="loading" class="loading-message">
+            <div class="loading-bubble">
+              <div class="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <span class="loading-text">Analisando editais...</span>
+            </div>
+          </div>
+
+          <!-- Scroll to bottom button -->
+          <button
+            v-show="showScrollButton"
+            class="scroll-bottom"
+            @click="scrollToBottom"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+          <form @submit.prevent="sendMessage" class="input-form">
+            <div class="input-wrapper">
+              <textarea
+                ref="inputField"
+                v-model="userInput"
+                placeholder="Digite sua pergunta sobre editais..."
+                rows="1"
+                @keydown.enter.exact.prevent="sendMessage"
+                @input="autoResize"
+              ></textarea>
+              <button
+                type="submit"
+                class="send-button"
+                :disabled="!userInput.trim() || loading"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </div>
+          </form>
+          <p class="input-hint">
+            Pressione Enter para enviar • IA baseada em RAG
+          </p>
+        </div>
+      </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import MessageBubble from '../components/MessageBubble.vue'
-import { askQuestion, getEditais, getSuggestedQuestions } from '../services/api.js'
-import { error as showError } from '../utils/toast.js'
-import ThemeToggle from '../components/ThemeToggle.vue'
+import { ref, onMounted, nextTick, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import MessageBubble from "../components/MessageBubble.vue";
+import {
+  askQuestion,
+  getEditais,
+  getSuggestedQuestions,
+} from "../services/api.js";
+import { error as showError } from "../utils/toast.js";
+import ThemeToggle from "../components/ThemeToggle.vue";
 
-const route = useRoute()
-const router = useRouter()
+const route = useRoute();
+const router = useRouter();
 
 // State
-const messages = ref([])
-const userInput = ref('')
-const loading = ref(false)
-const editais = ref([])
-const selectedEditalId = ref(null)
-const suggestedQuestions = ref([])
-const messagesContainer = ref(null)
-const inputField = ref(null)
-const sidebarClosed = ref(false)
-const showScrollButton = ref(false)
-const editaisLoaded = ref(false)
-const isLoggedIn = ref(false)
+const messages = ref([]);
+const userInput = ref("");
+const loading = ref(false);
+const editais = ref([]);
+const selectedEditalId = ref(null);
+const suggestedQuestions = ref([]);
+const messagesContainer = ref(null);
+const inputField = ref(null);
+const sidebarClosed = ref(false);
+const showScrollButton = ref(false);
+const editaisLoaded = ref(false);
+const isLoggedIn = ref(false);
 
 // Check login status
 onMounted(async () => {
-  isLoggedIn.value = !!localStorage.getItem('auth_token')
-  
-  await loadEditais()
+  isLoggedIn.value = !!localStorage.getItem("auth_token");
+
+  await loadEditais();
 
   // Check for edital ID in route
   if (route.params.id) {
-    selectedEditalId.value = route.params.id
-    await loadSuggestedQuestions(route.params.id)
+    selectedEditalId.value = route.params.id;
+    await loadSuggestedQuestions(route.params.id);
   }
 
   // Scroll event listener
-  messagesContainer.value?.addEventListener('scroll', handleScroll)
+  messagesContainer.value?.addEventListener("scroll", handleScroll);
 
   // Initial scroll to bottom
-  scrollToBottom()
-})
+  scrollToBottom();
+});
 
 async function loadEditais() {
   // Evitar requisições duplicadas
-  if (editaisLoaded.value) return
+  if (editaisLoaded.value) return;
 
   try {
-    const response = await getEditais()
-    editais.value = response.data || []
-    editaisLoaded.value = true
+    const response = await getEditais();
+    editais.value = response.data || [];
+    editaisLoaded.value = true;
   } catch (error) {
-    console.error('Error loading editais:', error)
+    console.error("Error loading editais:", error);
   }
 }
 
 async function loadSuggestedQuestions(editalId) {
   try {
-    const response = await getSuggestedQuestions(editalId)
-    suggestedQuestions.value = response.data?.questions || []
+    const response = await getSuggestedQuestions(editalId);
+    suggestedQuestions.value = response.data?.questions || [];
   } catch (error) {
-    console.error('Error loading suggestions:', error)
-    suggestedQuestions.value = []
+    console.error("Error loading suggestions:", error);
+    suggestedQuestions.value = [];
   }
 }
 
 function onEditalChange() {
   if (selectedEditalId.value) {
-    loadSuggestedQuestions(selectedEditalId.value)
+    loadSuggestedQuestions(selectedEditalId.value);
   } else {
-    suggestedQuestions.value = []
+    suggestedQuestions.value = [];
   }
 }
 
 function selectEdital(id) {
-  selectedEditalId.value = id
-  loadSuggestedQuestions(id)
+  selectedEditalId.value = id;
+  loadSuggestedQuestions(id);
 }
 
 async function sendMessage() {
-  const question = userInput.value.trim()
-  if (!question || loading.value) return
+  const question = userInput.value.trim();
+  if (!question || loading.value) return;
 
   // Add user message
   messages.value.push({
-    type: 'user',
-    content: question
-  })
+    type: "user",
+    content: question,
+  });
 
   // Clear input
-  userInput.value = ''
+  userInput.value = "";
   if (inputField.value) {
-    inputField.value.style.height = 'auto'
+    inputField.value.style.height = "auto";
   }
 
   // Show loading
-  loading.value = true
+  loading.value = true;
 
   try {
     // Send question to API
     const response = await askQuestion({
       pergunta: question,
-      editalId: selectedEditalId.value
-    })
+      editalId: selectedEditalId.value,
+    });
 
     // Add assistant message
     messages.value.push({
-      type: 'assistant',
+      type: "assistant",
       content: response.data.resposta,
       sources: response.data.fontes,
-      metadata: response.data.metadata
-    })
+      metadata: response.data.metadata,
+    });
   } catch (error) {
-    showError(error.message || 'Não foi possível processar sua pergunta. Tente novamente.')
+    showError(
+      error.message ||
+        "Não foi possível processar sua pergunta. Tente novamente.",
+    );
     messages.value.push({
-      type: 'error',
-      content: 'Não foi possível processar sua pergunta. Verifique sua conexão e tente novamente.'
-    })
+      type: "error",
+      content:
+        "Não foi possível processar sua pergunta. Verifique sua conexão e tente novamente.",
+    });
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function askSuggested(question) {
-  userInput.value = question
-  sendMessage()
+  userInput.value = question;
+  sendMessage();
 }
 
 function scrollToBottom() {
-  if (!messagesContainer.value) return
-  
+  if (!messagesContainer.value) return;
+
   // Use requestAnimationFrame para garantir que o DOM foi atualizado
   requestAnimationFrame(() => {
     messagesContainer.value.scrollTo({
       top: messagesContainer.value.scrollHeight,
-      behavior: 'smooth'
-    })
-  })
+      behavior: "smooth",
+    });
+  });
 }
 
 function handleScroll() {
-  if (!messagesContainer.value) return
-  
-  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
-  showScrollButton.value = scrollHeight - scrollTop - clientHeight > 200
+  if (!messagesContainer.value) return;
+
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
+  showScrollButton.value = scrollHeight - scrollTop - clientHeight > 200;
 }
 
 // Watch messages to auto-scroll
@@ -348,16 +435,17 @@ watch(
   messages,
   () => {
     nextTick(() => {
-      scrollToBottom()
-    })
+      scrollToBottom();
+    });
   },
-  { deep: true }
-)
+  { deep: true },
+);
 
 function autoResize() {
   if (inputField.value) {
-    inputField.value.style.height = 'auto'
-    inputField.value.style.height = Math.min(inputField.value.scrollHeight, 150) + 'px'
+    inputField.value.style.height = "auto";
+    inputField.value.style.height =
+      Math.min(inputField.value.scrollHeight, 150) + "px";
   }
 }
 </script>
@@ -604,7 +692,7 @@ function autoResize() {
 }
 
 .tips-list li::before {
-  content: '•';
+  content: "•";
   position: absolute;
   left: 0;
   color: var(--color-primary-500);
@@ -649,12 +737,12 @@ function autoResize() {
 /* Messages Container */
 .messages-container {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
   padding: 1rem;
   scroll-behavior: smooth;
   background: var(--color-bg);
   position: relative;
-  max-height: fit;
+  max-height: 600px;
 }
 
 .messages-list {
@@ -781,8 +869,15 @@ function autoResize() {
 }
 
 @keyframes typing {
-  0%, 100% { transform: translateY(0); opacity: 0.5; }
-  50% { transform: translateY(-4px); opacity: 1; }
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 .loading-text {

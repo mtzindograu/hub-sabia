@@ -14,7 +14,19 @@
           class="search-input"
         />
       </div>
-      <span class="count-badge">{{ filteredEditais.length }} edital{{ filteredEditais.length !== 1 ? 'is' : '' }}</span>
+      
+      <div class="header-right-actions">
+        <span class="count-badge">{{ filteredEditais.length }} edital{{ filteredEditais.length !== 1 ? 'is' : '' }}</span>
+        
+        <button v-if="isAdmin" class="btn-primary" @click="showUploadModal = true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Adicionar Edital
+        </button>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -33,6 +45,14 @@
       <h3 v-else>Nenhum edital disponível</h3>
       <p v-if="searchQuery">Tente buscar com outros termos</p>
       <p v-else>Os editais aparecerão aqui quando forem adicionados ao sistema</p>
+      
+      <button v-if="isAdmin && !searchQuery" class="btn-primary mt-4" @click="showUploadModal = true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Adicionar Primeiro Edital
+      </button>
     </div>
 
     <!-- Grid de Cards -->
@@ -48,22 +68,32 @@
         @deleted="handleDeleted(edital.id)"
       />
     </div>
+
+    <!-- Upload Modal -->
+    <EditalUploadModal 
+      v-if="showUploadModal" 
+      @close="showUploadModal = false"
+      @success="fetchEditais"
+    />
   </DashboardLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import DashboardLayout from '../../layouts/DashboardLayout.vue'
 import EditalCard from '../../components/EditalCard.vue'
+import EditalUploadModal from '../../components/EditalUploadModal.vue'
 import { getEditais } from '../../services/api.js'
 import { success } from '../../utils/toast.js'
 
 const router = useRouter()
+const route = useRoute()
 const editais = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
 const isAdminCached = ref(false)
+const showUploadModal = ref(false)
 
 // Verificar se é admin apenas uma vez (cache)
 onMounted(() => {
@@ -91,7 +121,8 @@ const filteredEditais = computed(() => {
 })
 
 function viewEdital(id) {
-  router.push(`/dashboard/editais/${id}`)
+  const prefix = isAdmin.value ? '/admin' : '/dashboard'
+  router.push(`${prefix}/editais/${id}`)
 }
 
 function chatAboutEdital(id) {
@@ -103,7 +134,7 @@ function handleDeleted(id) {
   success('Edital excluído com sucesso!')
 }
 
-onMounted(async () => {
+async function fetchEditais() {
   try {
     loading.value = true
     const response = await getEditais()
@@ -112,6 +143,20 @@ onMounted(async () => {
     console.error('Erro ao carregar editais:', e)
   } finally {
     loading.value = false
+  }
+}
+
+onMounted(async () => {
+  await fetchEditais()
+  
+  if (route.query.upload === 'true' && isAdmin.value) {
+    showUploadModal.value = true
+  }
+})
+
+watch(() => route.query.upload, (newVal) => {
+  if (newVal === 'true' && isAdmin.value) {
+    showUploadModal.value = true
   }
 })
 </script>
@@ -122,7 +167,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  gap: 1rem;
+  gap: 1.5rem;
   flex-wrap: wrap;
 }
 
@@ -164,6 +209,12 @@ onMounted(async () => {
   color: var(--color-gray-400);
 }
 
+.header-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
 .count-badge {
   font-size: 0.8125rem;
   font-weight: 600;
@@ -172,6 +223,31 @@ onMounted(async () => {
   padding: 0.375rem 0.875rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--color-border);
+}
+
+.btn-primary {
+  background: var(--color-primary-600);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-primary);
+}
+
+.btn-primary svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* Loading & Empty States */
@@ -201,6 +277,10 @@ onMounted(async () => {
   color: var(--color-gray-500);
 }
 
+.mt-4 {
+  margin-top: 1rem;
+}
+
 /* Grid */
 .editais-grid {
   display: grid;
@@ -221,6 +301,10 @@ onMounted(async () => {
 
   .search-box {
     max-width: none;
+  }
+  
+  .header-right-actions {
+    justify-content: space-between;
   }
 }
 </style>
