@@ -1,10 +1,13 @@
 <template>
-  <div class="dashboard-layout">
+  <div class="dashboard-layout" :class="{ 'sidebar-mobile-open': isMobileMenuOpen }">
     <!-- Toast Notifications -->
     <ToastContainer />
 
+    <!-- Backdrop for mobile -->
+    <div v-if="isMobileMenuOpen" class="sidebar-backdrop" @click="isMobileMenuOpen = false"></div>
+
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ collapsed: isCollapsed }">
+    <aside class="sidebar" :class="{ collapsed: isCollapsed, 'mobile-open': isMobileMenuOpen }">
       <div class="sidebar-header">
         <div class="header-top-wrapper">
           <div class="sidebar-logo">
@@ -16,10 +19,17 @@
             <span v-show="!isCollapsed" class="logo-text">HubSabia</span>
           </div>
           
-          <button class="collapse-btn" @click="toggleCollapse" :title="isCollapsed ? 'Expandir' : 'Recolher'">
+          <button class="collapse-btn hide-mobile" @click="toggleCollapse" :title="isCollapsed ? 'Expandir' : 'Recolher'">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline :points="isCollapsed ? '9 18 15 12 9 6' : '11 17 6 12 11 7'" />
               <polyline points="18 17 13 12 18 7" v-if="!isCollapsed" />
+            </svg>
+          </button>
+
+          <button class="btn-close-mobile show-mobile" @click="isMobileMenuOpen = false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
@@ -42,7 +52,7 @@
           :to="item.path"
           class="nav-item"
           :class="{ active: isActive(item.path) }"
-          :title="isCollapsed ? item.label : ''"
+          @click="isMobileMenuOpen = false"
         >
           <div class="nav-icon" v-html="item.icon"></div>
           <span v-show="!isCollapsed" class="nav-label">{{ item.label }}</span>
@@ -51,7 +61,7 @@
 
       <!-- Logout -->
       <div class="sidebar-footer">
-        <button class="nav-item logout-btn" @click="handleLogout" :title="isCollapsed ? 'Sair' : ''">
+        <button class="nav-item logout-btn" @click="handleLogout">
           <div class="nav-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -68,16 +78,23 @@
     <main class="main-content">
       <header class="top-header">
         <div class="header-left">
+          <button class="menu-toggle-btn show-mobile" @click="isMobileMenuOpen = true" aria-label="Abrir menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
           <h1 class="page-title">{{ pageTitle }}</h1>
         </div>
         <div class="header-right">
           <ThemeToggle />
-          <router-link to="/" class="btn-ghost">
+          <router-link to="/" class="btn-ghost home-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
               <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
-            <span>Página Inicial</span>
+            <span class="hide-small-mobile">Página Inicial</span>
           </router-link>
         </div>
       </header>
@@ -89,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { logout } from '../services/api.js'
 import ToastContainer from '../components/ToastContainer.vue'
@@ -106,6 +123,7 @@ const props = defineProps({
 const router = useRouter()
 const route = useRoute()
 const isCollapsed = ref(false)
+const isMobileMenuOpen = ref(false)
 
 const currentUser = ref(null)
 
@@ -170,6 +188,10 @@ function loadUser() {
   }
 }
 
+watch(() => route.path, () => {
+  isMobileMenuOpen.value = false
+})
+
 onMounted(() => {
   loadUser()
 })
@@ -180,6 +202,7 @@ onMounted(() => {
   display: flex;
   min-height: 100vh;
   background: var(--color-bg);
+  position: relative;
 }
 
 .sidebar {
@@ -188,11 +211,11 @@ onMounted(() => {
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
   position: sticky;
   top: 0;
   height: 100vh;
-  z-index: 100;
+  z-index: 1000;
   flex-shrink: 0;
 }
 
@@ -253,7 +276,7 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.collapse-btn {
+.collapse-btn, .btn-close-mobile, .menu-toggle-btn {
   background: var(--color-surface-2);
   border: none;
   cursor: pointer;
@@ -267,12 +290,12 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.collapse-btn:hover {
+.collapse-btn:hover, .btn-close-mobile:hover, .menu-toggle-btn:hover {
   background: var(--color-primary-50);
   color: var(--color-primary-600);
 }
 
-.collapse-btn svg {
+.collapse-btn svg, .btn-close-mobile svg, .menu-toggle-btn svg {
   width: 20px;
   height: 20px;
 }
@@ -329,7 +352,7 @@ onMounted(() => {
   padding: 1rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .sidebar.collapsed .sidebar-nav {
@@ -349,6 +372,7 @@ onMounted(() => {
   text-decoration: none;
   transition: all 0.2s;
   width: 100%;
+  overflow: hidden;
 }
 
 .sidebar.collapsed .nav-item {
@@ -403,12 +427,14 @@ onMounted(() => {
   align-items: center;
   gap: 0.75rem;
   width: 100%;
+  padding: 0.75rem 1rem;
 }
 
 .sidebar.collapsed .logout-btn {
   justify-content: center;
   width: 48px;
   height: 48px;
+  padding: 0;
 }
 
 .logout-btn:hover {
@@ -431,6 +457,15 @@ onMounted(() => {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   min-height: 73px;
+  position: sticky;
+  top: 0;
+  z-index: 900;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .page-title {
@@ -438,12 +473,15 @@ onMounted(() => {
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .btn-ghost {
@@ -470,6 +508,16 @@ onMounted(() => {
   overflow-y: auto;
 }
 
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 990;
+}
+
+.show-mobile { display: none; }
+
 @media (max-width: 1024px) {
   .sidebar {
     position: fixed;
@@ -477,13 +525,40 @@ onMounted(() => {
     top: 0;
     transform: translateX(-100%);
   }
+
   .sidebar.mobile-open {
     transform: translateX(0);
+    width: 280px;
+  }
+  
+  .sidebar.mobile-open .logo-text,
+  .sidebar.mobile-open .user-info,
+  .sidebar.mobile-open .nav-label {
+    display: inline;
+  }
+
+  .show-mobile { display: flex; }
+  .hide-mobile { display: none; }
+  
+  .top-header {
+    padding: 1rem;
+  }
+  
+  .page-content {
+    padding: 1.5rem 1rem;
   }
 }
 
 @media (max-width: 640px) {
-  .top-header { padding: 1rem; }
-  .page-content { padding: 1.25rem; }
+  .hide-small-mobile { display: none; }
+  
+  .home-btn {
+    padding: 0.5rem;
+  }
+  
+  .page-title {
+    font-size: 1.125rem;
+    max-width: 150px;
+  }
 }
 </style>
