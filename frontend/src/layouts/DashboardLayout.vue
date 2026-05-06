@@ -1,33 +1,69 @@
 <template>
-  <div class="dashboard-layout" :class="{ 'sidebar-mobile-open': isMobileMenuOpen }">
+  <div
+    class="dashboard-layout"
+    :class="{ 'sidebar-mobile-open': isMobileMenuOpen }"
+  >
     <!-- Toast Notifications -->
     <ToastContainer />
 
     <!-- Backdrop for mobile -->
-    <div v-if="isMobileMenuOpen" class="sidebar-backdrop" @click="isMobileMenuOpen = false"></div>
+    <div
+      v-if="isMobileMenuOpen"
+      class="sidebar-backdrop"
+      @click="isMobileMenuOpen = false"
+    ></div>
 
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ collapsed: isCollapsed, 'mobile-open': isMobileMenuOpen }">
+    <aside
+      class="sidebar"
+      :class="{ collapsed: isCollapsed, 'mobile-open': isMobileMenuOpen }"
+    >
       <div class="sidebar-header">
         <div class="header-top-wrapper">
           <div class="sidebar-logo">
             <div class="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                />
               </svg>
             </div>
             <span v-show="!isCollapsed" class="logo-text">HubSabia</span>
           </div>
-          
-          <button class="collapse-btn hide-mobile" @click="toggleCollapse" :title="isCollapsed ? 'Expandir' : 'Recolher'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline :points="isCollapsed ? '9 18 15 12 9 6' : '11 17 6 12 11 7'" />
+
+          <button
+            class="collapse-btn hide-mobile"
+            @click="toggleCollapse"
+            :title="isCollapsed ? 'Expandir' : 'Recolher'"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline
+                :points="isCollapsed ? '9 18 15 12 9 6' : '11 17 6 12 11 7'"
+              />
               <polyline points="18 17 13 12 18 7" v-if="!isCollapsed" />
             </svg>
           </button>
 
-          <button class="btn-close-mobile show-mobile" @click="isMobileMenuOpen = false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button
+            class="btn-close-mobile show-mobile"
+            @click="isMobileMenuOpen = false"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -63,10 +99,15 @@
       <div class="sidebar-footer">
         <button class="nav-item logout-btn" @click="handleLogout">
           <div class="nav-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
           </div>
           <span v-show="!isCollapsed" class="nav-label">Sair</span>
@@ -78,8 +119,17 @@
     <main class="main-content">
       <header class="top-header">
         <div class="header-left">
-          <button class="menu-toggle-btn show-mobile" @click="isMobileMenuOpen = true" aria-label="Abrir menu">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button
+            class="menu-toggle-btn show-mobile"
+            @click="isMobileMenuOpen = true"
+            aria-label="Abrir menu"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <line x1="3" y1="12" x2="21" y2="12"></line>
               <line x1="3" y1="6" x2="21" y2="6"></line>
               <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -90,9 +140,16 @@
         <div class="header-right">
           <ThemeToggle />
           <router-link to="/" class="btn-ghost home-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              width="18"
+              height="18"
+            >
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
             <span class="hide-small-mobile">Página Inicial</span>
           </router-link>
@@ -106,34 +163,46 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { logout } from '../services/api.js'
-import ToastContainer from '../components/ToastContainer.vue'
-import ThemeToggle from '../components/ThemeToggle.vue'
-import { info } from '../utils/toast.js'
+import { ref, computed, onMounted, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { logout } from "../services/api.js";
+import ToastContainer from "../components/ToastContainer.vue";
+import ThemeToggle from "../components/ThemeToggle.vue";
+import { info } from "../utils/toast.js";
 
 const props = defineProps({
   pageTitle: {
     type: String,
-    default: 'Dashboard'
-  }
-})
+    default: "Dashboard",
+  },
+});
 
-const router = useRouter()
-const route = useRoute()
-const isCollapsed = ref(false)
-const isMobileMenuOpen = ref(false)
+const router = useRouter();
+const route = useRoute();
+const isCollapsed = ref(false);
+const isMobileMenuOpen = ref(false);
 
-const currentUser = ref(null)
+const currentUser = ref(null);
 
-const userName = computed(() => currentUser.value?.nome || currentUser.value?.email?.split('@')[0] || 'Usuário')
+const userName = computed(
+  () =>
+    currentUser.value?.nome ||
+    currentUser.value?.email?.split("@")[0] ||
+    "Usuário",
+);
 const userInitials = computed(() => {
-  const name = userName.value
-  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-})
-const userRole = computed(() => currentUser.value?.role || 'user')
-const userRoleLabel = computed(() => userRole.value === 'admin' ? 'Administrador' : 'Usuário')
+  const name = userName.value;
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+});
+const userRole = computed(() => currentUser.value?.role || "user");
+const userRoleLabel = computed(() =>
+  userRole.value === "admin" ? "Administrador" : "Usuário",
+);
 
 const Icons = {
   Dashboard: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
@@ -142,59 +211,68 @@ const Icons = {
   Users: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
   Alunos: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
   Profile: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
-  Plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`
-}
+  Plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+};
 
 const menuItems = computed(() => {
-  const isAdmin = userRole.value === 'admin'
-  return isAdmin ? [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: Icons.Dashboard },
-    { path: '/admin/editais', label: 'Editais', icon: Icons.Edital },
-    { path: '/admin/editais?upload=true', label: 'Novo Edital', icon: Icons.Plus },
-    { path: '/admin/chat', label: 'Chat IA', icon: Icons.Chat },
-    { path: '/admin/usuarios', label: 'Usuários', icon: Icons.Users },
-    { path: '/admin/perfil', label: 'Meu Perfil', icon: Icons.Profile }
-  ] : [
-    { path: '/dashboard', label: 'Dashboard', icon: Icons.Dashboard },
-    { path: '/editais', label: 'Editais', icon: Icons.Edital },
-    { path: '/chat', label: 'Chat IA', icon: Icons.Chat },
-    { path: '/chat-alunos', label: 'Chat Alunos', icon: Icons.Alunos },
-    { path: '/perfil', label: 'Meu Perfil', icon: Icons.Profile }
-  ]
-})
+  const isAdmin = userRole.value === "admin";
+  return isAdmin
+    ? [
+        { path: "/admin/dashboard", label: "Dashboard", icon: Icons.Dashboard },
+        { path: "/admin/editais", label: "Editais", icon: Icons.Edital },
+        {
+          path: "/admin/editais?upload=true",
+          label: "Novo Edital",
+          icon: Icons.Plus,
+        },
+        { path: "/admin/chat", label: "Chat IA", icon: Icons.Chat },
+        { path: "/admin/usuarios", label: "Usuários", icon: Icons.Users },
+        { path: "/admin/perfil", label: "Meu Perfil", icon: Icons.Profile },
+      ]
+    : [
+        { path: "/dashboard", label: "Dashboard", icon: Icons.Dashboard },
+        { path: "/editais", label: "Editais", icon: Icons.Edital },
+        { path: "/chat", label: "Chat IA", icon: Icons.Chat },
+        { path: "/chat-alunos", label: "Chat Alunos", icon: Icons.Alunos },
+        { path: "/perfil", label: "Meu Perfil", icon: Icons.Profile },
+      ];
+});
 
 function isActive(path) {
-  return route.path === path || route.path.startsWith(path + '/')
+  return route.path === path || route.path.startsWith(path + "/");
 }
 
 function toggleCollapse() {
-  isCollapsed.value = !isCollapsed.value
+  isCollapsed.value = !isCollapsed.value;
 }
 
 function handleLogout() {
-  info('Sessão encerrada. Até logo!')
-  logout()
-  router.push('/login')
+  info("Sessão encerrada. Até logo!");
+  logout();
+  router.push("/login");
 }
 
 function loadUser() {
-  const stored = localStorage.getItem('user')
+  const stored = localStorage.getItem("user");
   if (stored) {
     try {
-      currentUser.value = JSON.parse(stored)
+      currentUser.value = JSON.parse(stored);
     } catch {
-      currentUser.value = null
+      currentUser.value = null;
     }
   }
 }
 
-watch(() => route.path, () => {
-  isMobileMenuOpen.value = false
-})
+watch(
+  () => route.path,
+  () => {
+    isMobileMenuOpen.value = false;
+  },
+);
 
 onMounted(() => {
-  loadUser()
-})
+  loadUser();
+});
 </script>
 
 <style scoped>
@@ -211,7 +289,9 @@ onMounted(() => {
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+  transition:
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s ease;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -276,7 +356,9 @@ onMounted(() => {
   white-space: nowrap;
 }
 
-.collapse-btn, .btn-close-mobile, .menu-toggle-btn {
+.collapse-btn,
+.btn-close-mobile,
+.menu-toggle-btn {
   background: var(--color-surface-2);
   border: none;
   cursor: pointer;
@@ -290,12 +372,16 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.collapse-btn:hover, .btn-close-mobile:hover, .menu-toggle-btn:hover {
+.collapse-btn:hover,
+.btn-close-mobile:hover,
+.menu-toggle-btn:hover {
   background: var(--color-primary-50);
   color: var(--color-primary-600);
 }
 
-.collapse-btn svg, .btn-close-mobile svg, .menu-toggle-btn svg {
+.collapse-btn svg,
+.btn-close-mobile svg,
+.menu-toggle-btn svg {
   width: 20px;
   height: 20px;
 }
@@ -316,7 +402,11 @@ onMounted(() => {
 .user-avatar {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-600),
+    var(--color-primary-700)
+  );
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -402,7 +492,8 @@ onMounted(() => {
   justify-content: center;
 }
 
-.nav-icon :deep(svg), .nav-icon svg {
+.nav-icon :deep(svg),
+.nav-icon svg {
   width: 20px;
   height: 20px;
 }
@@ -516,7 +607,9 @@ onMounted(() => {
   z-index: 990;
 }
 
-.show-mobile { display: none; }
+.show-mobile {
+  display: none;
+}
 
 @media (max-width: 1024px) {
   .sidebar {
@@ -530,32 +623,38 @@ onMounted(() => {
     transform: translateX(0);
     width: 280px;
   }
-  
+
   .sidebar.mobile-open .logo-text,
   .sidebar.mobile-open .user-info,
   .sidebar.mobile-open .nav-label {
     display: inline;
   }
 
-  .show-mobile { display: flex; }
-  .hide-mobile { display: none; }
-  
+  .show-mobile {
+    display: flex;
+  }
+  .hide-mobile {
+    display: none;
+  }
+
   .top-header {
     padding: 1rem;
   }
-  
+
   .page-content {
     padding: 1.5rem 1rem;
   }
 }
 
 @media (max-width: 640px) {
-  .hide-small-mobile { display: none; }
-  
+  .hide-small-mobile {
+    display: none;
+  }
+
   .home-btn {
     padding: 0.5rem;
   }
-  
+
   .page-title {
     font-size: 1.125rem;
     max-width: 150px;

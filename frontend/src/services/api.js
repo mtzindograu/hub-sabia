@@ -178,6 +178,23 @@ export async function getChatHistory(params = {}) {
   return api.get("/chat/historico", { params });
 }
 
+/**
+ * Get all conversations for current user
+ * @returns {Promise<Object>} List of conversations
+ */
+export async function getConversations() {
+  return api.get("/chat/conversas");
+}
+
+/**
+ * Get messages for a specific conversation
+ * @param {string} conversationId 
+ * @returns {Promise<Object>} List of messages
+ */
+export async function getConversationMessages(conversationId) {
+  return api.get(`/chat/conversa/${conversationId}`);
+}
+
 // ============================================
 // Health Check
 // ============================================

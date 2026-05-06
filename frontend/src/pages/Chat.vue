@@ -48,6 +48,22 @@
           <p>Faça perguntas sobre editais acadêmicos</p>
         </div>
 
+        <!-- New Chat Button -->
+        <div class="sidebar-section text-center" style="align-self: flex-start">
+          <button class="btn btn-primary btn-new-chat" @click="startNewChat">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nova Conversa
+          </button>
+        </div>
+
         <!-- Edital Selector -->
         <div class="sidebar-section">
           <label class="section-label">
@@ -79,6 +95,43 @@
           </select>
         </div>
 
+        <!-- Chat History (Only for logged users) -->
+        <div
+          v-if="isLoggedIn && conversations.length > 0"
+          class="sidebar-section history-section"
+        >
+          <label class="section-label">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M12 8v4l3 2" />
+              <circle cx="12" cy="12" r="10" />
+            </svg>
+            Histórico
+          </label>
+          <div class="history-list">
+            <button
+              v-for="conv in conversations"
+              :key="conv._id"
+              :class="[
+                'history-item',
+                { active: currentConversationId === conv._id },
+              ]"
+              @click="loadConversation(conv._id)"
+            >
+              <div class="history-item-content">
+                <span class="history-title">{{ conv.titulo }}</span>
+                <span class="history-date">{{
+                  formatDate(conv.last_message_at)
+                }}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
         <!-- Suggested Questions -->
         <div v-if="suggestedQuestions.length > 0" class="sidebar-section">
           <label class="section-label">
@@ -104,28 +157,6 @@
               {{ question }}
             </button>
           </div>
-        </div>
-
-        <!-- Tips -->
-        <div class="sidebar-section tips-section">
-          <label class="section-label">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-              />
-            </svg>
-            Dicas
-          </label>
-          <ul class="tips-list">
-            <li>Seja específico em suas perguntas</li>
-            <li>Pergunte sobre prazos e requisitos</li>
-            <li>Mencione o nome do edital</li>
-          </ul>
         </div>
       </aside>
 
@@ -282,6 +313,8 @@ import {
   askQuestion,
   getEditais,
   getSuggestedQuestions,
+  getConversations,
+  getConversationMessages,
 } from "../services/api.js";
 import { error as showError } from "../utils/toast.js";
 import ThemeToggle from "../components/ThemeToggle.vue";
@@ -303,11 +336,19 @@ const showScrollButton = ref(false);
 const editaisLoaded = ref(false);
 const isLoggedIn = ref(false);
 
+// History management
+const conversations = ref([]);
+const currentConversationId = ref(null);
+
 // Check login status
 onMounted(async () => {
   isLoggedIn.value = !!localStorage.getItem("auth_token");
 
   await loadEditais();
+
+  if (isLoggedIn.value) {
+    fetchConversations();
+  }
 
   // Check for edital ID in route
   if (route.params.id) {
@@ -322,10 +363,59 @@ onMounted(async () => {
   scrollToBottom();
 });
 
-async function loadEditais() {
-  // Evitar requisições duplicadas
-  if (editaisLoaded.value) return;
+async function fetchConversations() {
+  try {
+    const response = await getConversations();
+    conversations.value = response.data || [];
+  } catch (error) {
+    console.error("Error fetching conversations:", error);
+  }
+}
 
+async function loadConversation(id) {
+  try {
+    loading.value = true;
+    currentConversationId.value = id;
+    const response = await getConversationMessages(id);
+
+    // Transform logs into messages
+    const transformedMessages = [];
+    response.data.forEach((log) => {
+      transformedMessages.push({
+        type: "user",
+        content: log.pergunta,
+        timestamp: log.createdAt,
+      });
+      if (log.resposta) {
+        transformedMessages.push({
+          type: "assistant",
+          content: log.resposta,
+          sources: log.metadata?.sources || [],
+          timestamp: log.createdAt,
+        });
+      }
+    });
+
+    messages.value = transformedMessages;
+
+    const conv = conversations.value.find((c) => c._id === id);
+    if (conv && conv.edital_id) {
+      selectedEditalId.value = conv.edital_id._id || conv.edital_id;
+    }
+  } catch (error) {
+    showError("Erro ao carregar histórico");
+  } finally {
+    loading.value = false;
+  }
+}
+
+function startNewChat() {
+  messages.value = [];
+  currentConversationId.value = null;
+}
+
+async function loadEditais() {
+  if (editaisLoaded.value) return;
   try {
     const response = await getEditais();
     editais.value = response.data || [];
@@ -382,7 +472,13 @@ async function sendMessage() {
     const response = await askQuestion({
       pergunta: question,
       editalId: selectedEditalId.value,
+      conversationId: currentConversationId.value,
     });
+
+    if (!currentConversationId.value && response.data.conversationId) {
+      currentConversationId.value = response.data.conversationId;
+      fetchConversations();
+    }
 
     // Add assistant message
     messages.value.push({
@@ -392,14 +488,10 @@ async function sendMessage() {
       metadata: response.data.metadata,
     });
   } catch (error) {
-    showError(
-      error.message ||
-        "Não foi possível processar sua pergunta. Tente novamente.",
-    );
+    showError(error.message || "Erro ao processar pergunta");
     messages.value.push({
       type: "error",
-      content:
-        "Não foi possível processar sua pergunta. Verifique sua conexão e tente novamente.",
+      content: "Erro de conexão. Tente novamente.",
     });
   } finally {
     loading.value = false;
@@ -413,8 +505,6 @@ function askSuggested(question) {
 
 function scrollToBottom() {
   if (!messagesContainer.value) return;
-
-  // Use requestAnimationFrame para garantir que o DOM foi atualizado
   requestAnimationFrame(() => {
     messagesContainer.value.scrollTo({
       top: messagesContainer.value.scrollHeight,
@@ -425,18 +515,24 @@ function scrollToBottom() {
 
 function handleScroll() {
   if (!messagesContainer.value) return;
-
   const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
   showScrollButton.value = scrollHeight - scrollTop - clientHeight > 200;
 }
 
-// Watch messages to auto-scroll
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return (
+    date.toLocaleDateString("pt-BR") +
+    " " +
+    date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+
 watch(
   messages,
   () => {
-    nextTick(() => {
-      scrollToBottom();
-    });
+    nextTick(() => scrollToBottom());
   },
   { deep: true },
 );
@@ -550,16 +646,12 @@ function autoResize() {
   overflow-y: auto;
   border-right: 1px solid var(--color-border);
   transition: width var(--transition-slow);
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-sidebar.closed {
   display: none;
-}
-
-.sidebar-header {
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
 }
 
 .header-top {
@@ -602,7 +694,28 @@ function autoResize() {
 
 /* Sidebar Sections */
 .sidebar-section {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.btn-new-chat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.875rem;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  width: auto;
+  margin: 0 auto;
+}
+
+.btn-new-chat svg {
+  width: 14px;
+  height: 14px;
+}
+
+.text-center {
+  text-align: center;
 }
 
 .section-label {
@@ -640,6 +753,56 @@ function autoResize() {
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
 }
 
+/* History List */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.history-item {
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-item:hover {
+  background: var(--color-surface-2);
+  border-color: var(--color-primary-300);
+}
+
+.history-item.active {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-500);
+}
+
+.history-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.history-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-date {
+  font-size: 0.6875rem;
+  color: var(--color-gray-500);
+}
+
 /* Suggested Questions */
 .suggested-list {
   display: flex;
@@ -664,39 +827,6 @@ function autoResize() {
   border-color: var(--color-primary-500);
   color: var(--color-primary-700);
   transform: translateX(4px);
-}
-
-/* Tips */
-.tips-section {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  border: 1px solid var(--color-border);
-}
-
-.tips-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0;
-  margin: 0;
-}
-
-.tips-list li {
-  font-size: 0.75rem;
-  color: var(--color-gray-500);
-  padding-left: 1rem;
-  position: relative;
-  line-height: 1.4;
-}
-
-.tips-list li::before {
-  content: "•";
-  position: absolute;
-  left: 0;
-  color: var(--color-primary-500);
-  font-weight: bold;
 }
 
 /* Chat Main */
@@ -742,7 +872,6 @@ function autoResize() {
   scroll-behavior: smooth;
   background: var(--color-bg);
   position: relative;
-  max-height: 600px;
 }
 
 .messages-list {
@@ -757,7 +886,7 @@ function autoResize() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: fit;
+  min-height: 100%;
   text-align: center;
   color: var(--color-gray-500);
   padding: 2rem;
@@ -909,11 +1038,6 @@ function autoResize() {
   color: var(--color-primary-600);
 }
 
-.scroll-bottom:hover {
-  background: var(--color-primary-50);
-  border-color: var(--color-primary-500);
-}
-
 /* Input Area */
 .input-area {
   padding: 0.75rem 1rem;
@@ -977,12 +1101,10 @@ function autoResize() {
 .send-button:hover:not(:disabled) {
   background: var(--color-primary-700);
 }
-
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 .send-button svg {
   width: 16px;
   height: 16px;
@@ -998,56 +1120,11 @@ function autoResize() {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .chat-wrapper {
-    margin: 0.5rem;
-  }
-
-  .chat-public-header {
-    padding: 0.625rem 1rem;
-  }
-
-  .btn-back-home span {
-    display: none;
-  }
-
-  .header-actions-public {
-    gap: 0.5rem;
-  }
-
-  .btn-ghost-login {
-    padding: 0.5rem;
-  }
-
-  .btn-create-account {
-    padding: 0.5rem 0.875rem;
-    font-size: 0.8125rem;
-  }
-
   .chat-page {
     grid-template-columns: 1fr;
-    height: 100%;
-    min-height: calc(100vh - 120px);
-    margin: 0;
-    border-radius: 0;
   }
-
   .chat-sidebar {
     display: none;
-  }
-
-  .toggle-sidebar {
-    display: none;
-  }
-
-  .quick-start {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .quick-edital {
-    width: 100%;
-    max-width: none;
-    justify-content: center;
   }
 }
 </style>

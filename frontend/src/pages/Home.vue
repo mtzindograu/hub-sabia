@@ -231,7 +231,7 @@
     <!-- Editais em Destaque -->
     <section id="editais" class="editais-section">
       <div class="section-container">
-        <div class="section-header">
+        <div class="section-header flex">
           <div>
             <span class="section-badge">Oportunidades</span>
             <h2 class="section-title">Editais em Destaque</h2>
@@ -710,6 +710,23 @@ onMounted(async () => {
 .section-header {
   text-align: center;
   margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.section-header.flex {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-end;
+  text-align: left;
+  margin-bottom: 2rem;
+}
+
+.section-header.flex > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .section-badge {
@@ -856,26 +873,6 @@ onMounted(async () => {
 .editais-section {
   padding: 5rem 2rem;
   background: var(--color-surface);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  text-align: left;
-}
-
-.section-header > div {
-  text-align: left;
-}
-
-.section-header .section-badge {
-  margin-bottom: 0.5rem;
-}
-
-.section-header .section-title {
-  margin: 0;
 }
 
 .view-all-link {
@@ -1263,9 +1260,14 @@ onMounted(async () => {
   .section-header {
     flex-direction: column;
     gap: 0.75rem;
+    align-items: center;
+    text-align: center;
   }
 
   .section-header > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
   }
 

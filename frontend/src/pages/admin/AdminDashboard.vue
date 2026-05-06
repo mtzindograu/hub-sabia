@@ -109,6 +109,21 @@
           </svg>
         </router-link>
 
+        <router-link to="/admin/logs" class="quick-action-card">
+          <div class="action-icon-wrapper action-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <div class="action-text">
+            <span class="action-title">Logs de Chat</span>
+            <span class="action-desc">Veja o histórico de interações</span>
+          </div>
+          <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </router-link>
+
         <router-link to="/admin/editais" class="quick-action-card">
           <div class="action-icon-wrapper action-warning">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -410,7 +425,7 @@ async function loadStats() {
 /* Quick Actions */
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
 }
 
