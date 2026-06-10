@@ -5,11 +5,14 @@
 
 import express from "express";
 import { processQuestion } from "../services/rag.service.js";
-import { generateSuggestedQuestions } from "../services/groq.service.js";
+import geminiService, { GEMINI_MODELS } from "../services/gemini.service.js";
 import Edital from "../models/Edital.js";
 import ChatLog from "../models/ChatLog.js";
 import chatService from "../services/chat.service.js";
 import { optionalAuthMiddleware, authMiddleware } from "../middleware/auth.middleware.js";
+import User from "../models/User.js";
+import UsageLog from "../models/UsageLog.js";
+import providerManager from "../services/provider-manager.js";
 
 const router = express.Router();
 
@@ -48,7 +51,22 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
 
     // Get or create conversation for logged in user
     let conversation = null;
+    let userApiKey = null;
+    let preferredProvider = 'gemini';
+
     if (req.user) {
+      // Fetch user with API Keys and preference
+      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key +claude_api_key');
+      preferredProvider = user?.preferred_provider || 'gemini';
+      
+      if (preferredProvider === 'openai') {
+        userApiKey = user?.openai_api_key;
+      } else if (preferredProvider === 'claude') {
+        userApiKey = user?.claude_api_key;
+      } else {
+        userApiKey = user?.gemini_api_key;
+      }
+
       conversation = await chatService.getOrCreateConversation(
         req.user._id, 
         editalId, 
@@ -58,12 +76,15 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       conversation_id = conversation?._id;
     }
 
-    // Process question through RAG pipeline
-    const result = await processQuestion(trimmedQuestion, editalId);
+    // Process question through RAG pipeline (with user API key and provider preference)
+    const result = await processQuestion(trimmedQuestion, editalId, { 
+      userApiKey, 
+      provider: preferredProvider 
+    });
 
     const tempoRespostaMs = Date.now() - startTime;
 
-    // Log interaction (always happens, non-blocking)
+    // Log interaction (always happens)
     const logData = {
       pergunta: trimmedQuestion,
       resposta: result.response || (result.success ? "" : "Erro no processamento"),
@@ -77,10 +98,22 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       metadata: result.metadata
     };
 
-    // Fire and forget logging
-    chatService.logChatInteraction(logData).catch(err => {
-      console.error("[API] Failed to log interaction:", err.message);
-    });
+    const log = await chatService.logChatInteraction(logData);
+
+    // Save detailed usage log if available
+    if (result.metadata?.usage && req.user) {
+      UsageLog.create({
+        usuario_id: req.user._id,
+        provider: result.metadata.provider,
+        model: result.metadata.model,
+        prompt_tokens: result.metadata.usage.promptTokens,
+        completion_tokens: result.metadata.usage.completionTokens,
+        total_tokens: result.metadata.usage.totalTokens,
+        estimated_cost: result.metadata.usage.estimatedCost,
+        request_type: 'chat',
+        metadata: { conversation_id, edital_id: editalId }
+      }).catch(err => console.error("[API] Failed to save usage log:", err.message));
+    }
 
     if (!result.success) {
       return res.status(500).json({
@@ -92,6 +125,7 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
     res.json({
       success: true,
       data: {
+        id: log._id, // Return log ID for feedback
         pergunta: trimmedQuestion,
         resposta: result.response,
         fontes: result.sources,
@@ -133,7 +167,21 @@ router.post("/pergunta/stream", optionalAuthMiddleware, async (req, res) => {
     }
 
     // Get or create conversation for logged in user
+    let userApiKey = null;
+    let preferredProvider = 'gemini';
+
     if (req.user) {
+      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key +claude_api_key');
+      preferredProvider = user?.preferred_provider || 'gemini';
+
+      if (preferredProvider === 'openai') {
+        userApiKey = user?.openai_api_key;
+      } else if (preferredProvider === 'claude') {
+        userApiKey = user?.claude_api_key;
+      } else {
+        userApiKey = user?.gemini_api_key;
+      }
+
       const conversation = await chatService.getOrCreateConversation(
         req.user._id, 
         editalId, 
@@ -148,44 +196,45 @@ router.post("/pergunta/stream", optionalAuthMiddleware, async (req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Process question
-    const result = await processQuestion(pergunta, editalId);
-    const tempoRespostaMs = Date.now() - startTime;
-
-    // Log interaction
-    const logData = {
-      pergunta,
-      resposta: result.response,
-      campus_id,
-      edital_id: editalId || result.metadata?.editalId || null,
-      usuario_id: req.user?._id || null,
-      conversation_id,
-      tempoRespostaMs,
-      status: result.success ? "success" : "error",
-      error_message: result.success ? null : result.error,
-      metadata: result.metadata
-    };
-
-    chatService.logChatInteraction(logData).catch(err => {
-      console.error("[API] Failed to log interaction (stream):", err.message);
+    // Process question with streaming
+    const stream = providerManager.streamResponse(pergunta, editalId ? [] : [], { 
+      userApiKey, 
+      provider: preferredProvider 
     });
 
-    // Stream response word by word
-    const words = result.response.split(" ");
-    for (let i = 0; i < words.length; i++) {
-      res.write(`data: ${JSON.stringify({ word: words[i], done: false })}\n\n`);
-      await new Promise((resolve) => setTimeout(resolve, 30));
+    let fullResponse = "";
+    let finalMetadata = null;
+
+    for await (const chunk of stream) {
+      if (chunk.error) {
+        res.write(`data: ${JSON.stringify({ error: chunk.error, errorCategory: chunk.errorCategory })}\n\n`);
+        break;
+      }
+
+      if (chunk.done) {
+        finalMetadata = chunk.metadata;
+        res.write(`data: ${JSON.stringify({ done: true, sources: [], metadata: finalMetadata, conversationId: conversation_id })}\n\n`);
+      } else {
+        fullResponse += chunk.text;
+        res.write(`data: ${JSON.stringify({ word: chunk.text, done: false })}\n\n`);
+      }
     }
 
-    // Send final message with metadata
-    res.write(
-      `data: ${JSON.stringify({
-        done: true,
-        sources: result.sources,
-        metadata: result.metadata,
-        conversationId: conversation_id
-      })}\n\n`,
-    );
+    // Log interaction after stream finishes (best effort)
+    if (fullResponse) {
+      const logData = {
+        pergunta,
+        resposta: fullResponse,
+        campus_id,
+        edital_id: editalId || null,
+        usuario_id: req.user?._id || null,
+        conversation_id,
+        tempoRespostaMs: Date.now() - startTime,
+        status: "success",
+        metadata: finalMetadata
+      };
+      chatService.logChatInteraction(logData).catch(e => console.error("Stream log error:", e));
+    }
 
     res.end();
   } catch (error) {
@@ -236,6 +285,45 @@ router.get("/conversa/:id", authMiddleware, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/chat/feedback
+ * @desc    Submit feedback for a chat interaction
+ * @access  Public (Optional Auth)
+ */
+router.post("/feedback", async (req, res) => {
+  try {
+    const { logId, feedback } = req.body;
+
+    if (!logId || ![1, -1].includes(feedback)) {
+      return res.status(400).json({
+        success: false,
+        error: "Dados de feedback inválidos",
+      });
+    }
+
+    const log = await ChatLog.findByIdAndUpdate(
+      logId,
+      { feedback },
+      { new: true }
+    );
+
+    if (!log) {
+      return res.status(404).json({
+        success: false,
+        error: "Log de interação não encontrado",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Feedback enviado com sucesso",
+    });
+  } catch (error) {
+    console.error("[API] Feedback error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * @route   GET /api/chat/sugestoes/:editalId
  * @desc    Get suggested questions for an edital
  * @access  Public
@@ -262,16 +350,55 @@ router.get("/sugestoes/:editalId", async (req, res) => {
 
     const chunks = edital.chunks.slice(0, 5);
     const content = chunks.map((c) => c.conteudo).join("\n\n");
-    const result = await generateSuggestedQuestions(content);
+    
+    // Fetch user's AI preference
+    let userApiKey = null;
+    let preferredProvider = 'gemini';
+    if (req.user) {
+      const user = await User.findById(req.user.id).select('+gemini_api_key +openai_api_key +claude_api_key');
+      preferredProvider = user?.preferred_provider || 'gemini';
+      
+      if (preferredProvider === 'openai') {
+        userApiKey = user?.openai_api_key;
+      } else if (preferredProvider === 'claude') {
+        userApiKey = user?.claude_api_key;
+      } else {
+        userApiKey = user?.gemini_api_key;
+      }
+    }
+
+    // Hybrid Suggested Questions
+    let questions = [
+      "Quais são os requisitos para participação?",
+      "Qual é o prazo de inscrição?",
+      "Quais documentos são necessários?",
+    ];
+
+    try {
+      // Use Provider Manager
+      const prompt = `Com base no seguinte conteúdo de edital acadêmico, sugira 5 perguntas que estudantes frequentemente fazem (responda com uma lista numerada):\n\n${content.slice(0, 5000)}\n\nResponda apenas com as perguntas.`;
+      
+      const result = await providerManager.generateResponse(prompt, [], { 
+        userApiKey, 
+        provider: preferredProvider,
+        model: preferredProvider === 'gemini' ? GEMINI_MODELS.FAST : undefined 
+      });
+
+      if (result.success && result.response) {
+        const lines = result.response.split("\n");
+        const parsed = lines
+          .map(l => l.replace(/^\d+[\.\)]\s*/, "").trim())
+          .filter(l => l.length > 10 && l.endsWith("?"));
+        if (parsed.length > 0) questions = parsed.slice(0, 5);
+      }
+    } catch (err) {
+      console.error("[API] Failed to generate suggestions with AI:", err.message);
+    }
 
     res.json({
       success: true,
       data: {
-        questions: result.success ? result.questions : [
-          "Quais são os requisitos para participação?",
-          "Qual é o prazo de inscrição?",
-          "Quais documentos são necessários?",
-        ],
+        questions
       },
     });
   } catch (error) {

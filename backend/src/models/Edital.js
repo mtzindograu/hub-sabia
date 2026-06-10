@@ -27,7 +27,7 @@ const editalSchema = new mongoose.Schema({
     default: null,
   },
   
-  // Campos extraídos pelo Groq AI
+  // Campos extraídos pelo Gemini AI
   objetivo_principal: {
     type: String,
     default: '',
@@ -72,8 +72,20 @@ const editalSchema = new mongoose.Schema({
     type: Object,
     default: {},
   },
+  embedding_model: {
+    type: String,
+    default: 'local',
+  },
+  embedding_provider: {
+    type: String,
+    default: 'local', // 'local' or 'gemini'
+  },
+  embedding_dimension: {
+    type: Number,
+    default: 384, // 384 for local MiniLM, 768 for Gemini
+  },
   
-  // Chunks para RAG (embeddings armazenados localmente)
+  // Chunks para RAG
   chunks: [{
     conteudo: {
       type: String,

@@ -19,7 +19,8 @@ import {
 import { splitTextIntoChunks, getChunkingStats } from "../services/chunk.service.js";
 import { generateEmbeddings } from "../services/embedding.service.js";
 import { storeEditalChunks } from "../services/rag.service.js";
-import { extractMainPoints, generateEditalSummary } from "../services/groq.service.js";
+import geminiService from "../services/gemini.service.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 
@@ -159,21 +160,22 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
     const edital = new Edital(editalData);
     await edital.save();
 
-    editalId = edital._id.toString();
-    console.log(`[API] Edital created with ID: ${editalId}`);
+    // Fetch user's Gemini API key
+    const user = await User.findById(req.user.id).select('+gemini_api_key');
+    const userApiKey = user?.gemini_api_key;
 
-    // Step 4: Extract main points using Groq AI (PARA TODOS - PDF e manual)
-    console.log("[API] Step 4: Extracting main points with Groq AI...");
+    // Step 4: Extract main points using Gemini
+    console.log("[API] Step 4: Extracting main points with Gemini...");
 
-    const mainPointsResult = await extractMainPoints(cleanedText);
-
+    let mainPointsResult = await geminiService.extractMainPoints(cleanedText, { userApiKey });
+    
     if (mainPointsResult.success) {
       console.log("[API] Main points extracted successfully");
 
       // Converter tudo para string para evitar erros de validação
       const data = mainPointsResult.data;
 
-      // Update edital with extracted metadata (convertendo tudo para string)
+      // Update edital with extracted metadata
       edital.descricao = String(data.objetivo_principal || descricao || '');
       edital.objetivo_principal = String(data.objetivo_principal || '');
       edital.publico_alvo = String(data.publico_alvo || '');
@@ -191,7 +193,7 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
 
       console.log("[API] Edital metadata updated");
     } else {
-      console.log("[API] IA extraction failed, using basic data");
+      console.error("[API] All AI extraction failed, using basic data");
       edital.descricao = descricao || cleanedText.slice(0, 500);
       edital.objetivo_principal = descricao || cleanedText.slice(0, 500);
       await edital.save();
@@ -226,6 +228,7 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
     const embeddingsResult = await generateEmbeddings(chunkTexts, {
       batchSize: 5,
       delayBetweenBatches: 200,
+      userApiKey, // Pass the API key here
     });
 
     // Continue even if embeddings fail
@@ -237,6 +240,10 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
 
     // Step 7: Store chunks with embeddings in database
     console.log("[API] Step 7: Storing chunks in database...");
+
+    // Store used model
+    edital.embedding_model = embeddingsResult.model || 'local';
+    await edital.save();
 
     // Use null embeddings if generation failed
     const embeddingsToUse = embeddingsResult.success && embeddingsResult.embeddings.length > 0
@@ -250,17 +257,23 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
     }
 
     // Generate summary in background (don't wait)
-    generateEditalSummary(cleanedText).then((result) => {
-      if (result.success) {
-        Edital.findByIdAndUpdate(editalId, { descricao: result.summary.slice(0, 2000) })
-          .then(() => {
-            console.log("[API] Edital summary updated");
-          })
-          .catch((err) => {
-            console.warn("[API] Failed to update summary:", err.message);
-          });
+    const generateSummary = async () => {
+      try {
+        const result = await providerManager.generateEditalSummary(cleanedText, { 
+          userApiKey,
+          provider: preferredProvider
+        });
+        
+        if (result.success) {
+          await Edital.findByIdAndUpdate(editalId, { descricao: result.summary.slice(0, 2000) });
+          console.log("[API] Edital summary updated");
+        }
+      } catch (err) {
+        console.warn("[API] Failed to update summary:", err.message);
       }
-    });
+    };
+    
+    generateSummary();
 
     // Response
     console.log("[API] Upload complete!");
@@ -288,7 +301,6 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
   } catch (error) {
     console.error("[API] Upload error:", error);
 
-    // Cleanup: delete edital and chunks if something failed
     if (editalId) {
       console.log(`[API] Cleaning up: deleting edital ${editalId}`);
       await Edital.findByIdAndDelete(editalId);
@@ -521,3 +533,4 @@ router.get("/edital/:id/chunks", async (req, res) => {
 });
 
 export default router;
+

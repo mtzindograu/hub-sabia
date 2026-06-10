@@ -47,6 +47,11 @@ const chatLogSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  feedback: {
+    type: Number, // 1 for thumbs up, -1 for thumbs down
+    enum: [1, -1, null],
+    default: null,
+  },
   metadata: {
     type: Object,
     default: {},
@@ -59,6 +64,8 @@ const chatLogSchema = new mongoose.Schema({
 chatLogSchema.index({ campus_id: 1 });
 chatLogSchema.index({ edital_id: 1 });
 chatLogSchema.index({ usuario_id: 1 });
+chatLogSchema.index({ status: 1 });
+chatLogSchema.index({ feedback: 1 });
 chatLogSchema.index({ createdAt: -1 });
 
 const ChatLog = mongoose.models.ChatLog || mongoose.model('ChatLog', chatLogSchema);

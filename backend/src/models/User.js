@@ -30,6 +30,26 @@ const userSchema = new mongoose.Schema({
     trim: true,
     default: '',
   },
+  gemini_api_key: {
+    type: String,
+    default: null,
+    select: false, // Don't return by default in queries
+  },
+  openai_api_key: {
+    type: String,
+    default: null,
+    select: false, // Don't return by default in queries
+  },
+  claude_api_key: {
+    type: String,
+    default: null,
+    select: false, // Don't return by default in queries
+  },
+  preferred_provider: {
+    type: String,
+    enum: ['gemini', 'openai', 'claude'],
+    default: 'gemini',
+  },
 }, {
   timestamps: true, // Adiciona createdAt e updatedAt automaticamente
 });

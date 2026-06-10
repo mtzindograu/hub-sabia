@@ -1,6 +1,6 @@
 /**
  * Embedding Service
- * Generates vector embeddings using Transformers.js (local, no API required)
+ * Generates vector embeddings using Transformers.js (local) or Google Gemini API
  *
  * @description Creates embeddings for text chunks to enable vector similarity search
  */
@@ -8,6 +8,7 @@
 import { pipeline, env } from '@xenova/transformers';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import geminiService, { GEMINI_MODELS } from './gemini.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,8 +18,9 @@ env.allowLocalModels = false;
 env.useBrowserCache = false;
 
 // Model configuration
-const EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
-const EMBEDDING_DIMENSION = 384;
+const LOCAL_EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
+const LOCAL_EMBEDDING_DIMENSION = 384;
+const GEMINI_EMBEDDING_MODEL = GEMINI_MODELS.EMBEDDING;
 
 // Singleton pipeline instance
 let embeddingPipeline = null;
@@ -30,7 +32,7 @@ let embeddingPipeline = null;
 async function getPipeline() {
   if (!embeddingPipeline) {
     console.log('[Embedding] Loading model... (first time may take a while)');
-    embeddingPipeline = await pipeline('feature-extraction', EMBEDDING_MODEL, {
+    embeddingPipeline = await pipeline('feature-extraction', LOCAL_EMBEDDING_MODEL, {
       quantized: true, // Use quantized model for faster loading
     });
     console.log('[Embedding] Model loaded successfully!');
@@ -41,15 +43,29 @@ async function getPipeline() {
 /**
  * Generate embedding for a single text
  * @param {string} text - Text to embed
+ * @param {Object} options - Options including userApiKey and model
  * @returns {Promise<Object>} Embedding result
  */
-export async function generateEmbedding(text) {
+export async function generateEmbedding(text, options = {}) {
   try {
-    console.log(`[EMBEDDING] Gerando embedding para texto: "${text.slice(0, 50)}..."`);
-    console.log(`[EMBEDDING] Texto length: ${text.length} caracteres`);
+    const { 
+      userApiKey = null, 
+      model = null, // Explicit model request
+      useGemini = !!(process.env.GEMINI_API_KEY || userApiKey) 
+    } = options;
+
+    const targetModel = model || (useGemini ? GEMINI_EMBEDDING_MODEL : LOCAL_EMBEDDING_MODEL);
+
+    if (targetModel === GEMINI_EMBEDDING_MODEL) {
+      console.log(`[EMBEDDING] Using Google Gemini (${GEMINI_EMBEDDING_MODEL})`);
+      const result = await geminiService.generateEmbedding(text, { userApiKey });
+      if (result.success) return result;
+      console.warn(`[EMBEDDING] Gemini failed, falling back to local model: ${result.error}`);
+    }
+
+    console.log(`[EMBEDDING] Using local model (${LOCAL_EMBEDDING_MODEL})`);
     
     if (!text || text.trim().length === 0) {
-      console.error("[EMBEDDING] ERRO: Texto vazio");
       return {
         success: false,
         error: 'Empty text provided for embedding',
@@ -58,49 +74,23 @@ export async function generateEmbedding(text) {
     }
 
     const pipeline = await getPipeline();
-
-    // Truncate text if too long (max 512 tokens)
     const truncatedText = truncateText(text, 2000);
-    console.log(`[EMBEDDING] Texto truncado: ${truncatedText.length} caracteres`);
 
-    // Generate embedding
-    console.log("[EMBEDDING] Executando pipeline...");
     const output = await pipeline(truncatedText, {
       pooling: 'mean',
       normalize: true,
     });
 
     const embedding = Array.from(output.data);
-    console.log(`[EMBEDDING] Embedding gerado: ${embedding.length} dimensões`);
     
-    // Validate embedding
-    const hasInvalidValues = embedding.some(val => isNaN(val) || !isFinite(val));
-    if (hasInvalidValues) {
-      console.error("[EMBEDDING] ERRO: Embedding contém valores inválidos (NaN ou Infinity)");
-      return {
-        success: false,
-        error: 'Embedding contains invalid values',
-        embedding: null,
-      };
-    }
-
-    if (!embedding || embedding.length !== EMBEDDING_DIMENSION) {
-      console.error(`[EMBEDDING] ERRO: Dimensão inválida - esperado ${EMBEDDING_DIMENSION}, got ${embedding?.length || 0}`);
-      throw new Error(
-        `Invalid embedding dimension: expected ${EMBEDDING_DIMENSION}, got ${embedding?.length || 0}`
-      );
-    }
-
-    console.log("[EMBEDDING] SUCESSO!");
     return {
       success: true,
       embedding,
-      model: EMBEDDING_MODEL,
-      dimension: EMBEDDING_DIMENSION,
+      model: LOCAL_EMBEDDING_MODEL,
+      dimension: embedding.length,
     };
   } catch (error) {
-    console.error('[EMBEDDING] ERRO CRÍTICO:', error.message);
-    console.error('[EMBEDDING] Stack:', error.stack);
+    console.error('[EMBEDDING] ERRO:', error.message);
     return {
       success: false,
       error: error.message,
@@ -119,14 +109,7 @@ export async function generateEmbeddings(texts, options = {}) {
   try {
     const { batchSize = 10 } = options;
 
-    console.log('==========================================================');
-    console.log('[EMBEDDINGS] INICIANDO GERAÇÃO EM LOTE');
-    console.log(`[EMBEDDINGS] Total de textos: ${texts?.length || 0}`);
-    console.log(`[EMBEDDINGS] Batch size: ${batchSize}`);
-    console.log('==========================================================');
-
     if (!texts || texts.length === 0) {
-      console.error('[EMBEDDINGS] ERRO: Nenhum texto fornecido');
       return {
         success: false,
         error: 'No texts provided for embedding',
@@ -143,10 +126,8 @@ export async function generateEmbeddings(texts, options = {}) {
     // Process in batches
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize);
-      console.log(`[EMBEDDINGS] Processando batch ${Math.floor(i / batchSize) + 1} (${batch.length} textos)...`);
-
       const batchResults = await Promise.all(
-        batch.map((text) => generateEmbedding(text))
+        batch.map((text) => generateEmbedding(text, options))
       );
 
       results.push(...batchResults);
@@ -156,19 +137,14 @@ export async function generateEmbeddings(texts, options = {}) {
           successCount++;
         } else {
           failureCount++;
-          console.error(`[EMBEDDINGS] Falha: ${result.error}`);
         }
       });
     }
 
-    console.log('==========================================================');
-    console.log('[EMBEDDINGS] LOTE FINALIZADO');
-    console.log(`[EMBEDDINGS] Sucesso: ${successCount}, Falhas: ${failureCount}`);
-    console.log('==========================================================');
-
     return {
       success: successCount > 0,
       embeddings: results.map((r) => r.embedding),
+      model: results.find(r => r.success)?.model || 'local',
       results,
       successCount,
       failureCount,
@@ -189,19 +165,21 @@ export async function generateEmbeddings(texts, options = {}) {
 /**
  * Generate embedding specifically for query/question
  * @param {string} query - User query
+ * @param {Object} options - Options
  * @returns {Promise<Object>} Query embedding
  */
-export async function generateQueryEmbedding(query) {
-  return generateEmbedding(query);
+export async function generateQueryEmbedding(query, options = {}) {
+  return generateEmbedding(query, options);
 }
 
 /**
  * Generate embedding for document chunk
  * @param {string} chunk - Document chunk
+ * @param {Object} options - Options
  * @returns {Promise<Object>} Chunk embedding
  */
-export async function generateChunkEmbedding(chunk) {
-  return generateEmbedding(chunk);
+export async function generateChunkEmbedding(chunk, options = {}) {
+  return generateEmbedding(chunk, options);
 }
 
 /**
@@ -238,13 +216,6 @@ export function validateEmbedding(embedding) {
     };
   }
 
-  if (embedding.length !== EMBEDDING_DIMENSION) {
-    return {
-      valid: false,
-      error: `Invalid dimension: expected ${EMBEDDING_DIMENSION}, got ${embedding.length}`,
-    };
-  }
-
   const hasInvalidValues = embedding.some(
     (val) => isNaN(val) || !isFinite(val)
   );
@@ -258,7 +229,7 @@ export function validateEmbedding(embedding) {
 
   return {
     valid: true,
-    dimension: EMBEDDING_DIMENSION,
+    dimension: embedding.length,
   };
 }
 
@@ -273,6 +244,10 @@ export function cosineSimilarity(embeddingA, embeddingB) {
   const validationB = validateEmbedding(embeddingB);
 
   if (!validationA.valid || !validationB.valid) {
+    return 0;
+  }
+
+  if (embeddingA.length !== embeddingB.length) {
     return 0;
   }
 
@@ -300,6 +275,4 @@ export default {
   generateChunkEmbedding,
   validateEmbedding,
   cosineSimilarity,
-  EMBEDDING_DIMENSION,
-  EMBEDDING_MODEL,
 };

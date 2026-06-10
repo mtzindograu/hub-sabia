@@ -34,6 +34,8 @@
   "author": "HubSabia Team",
   "license": "MIT",
   "dependencies": {
-    "groq-sdk": "^1.1.1"
+    "@anthropic-ai/sdk": "^0.100.1",
+    "groq-sdk": "^1.1.1",
+    "openai": "^6.39.1"
   }
 }

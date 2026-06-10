@@ -160,101 +160,102 @@
         </div>
       </aside>
 
-      <!-- Chat Area -->
+      <!-- AI Provider Onboarding Overlay -->
       <main class="chat-main">
-        <!-- Toggle Sidebar Button -->
-        <button
-          class="toggle-sidebar"
-          @click="sidebarClosed = false"
-          v-if="sidebarClosed"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M18 8L22 12L18 16" />
-            <path d="M2 12H22" />
-          </svg>
-        </button>
-
-        <!-- Messages Container -->
-        <div ref="messagesContainer" class="messages-container">
-          <!-- Welcome Message -->
-          <div v-if="messages.length === 0" class="welcome-message">
-            <div class="welcome-icon">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path
-                  d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                />
-              </svg>
+        <div v-if="isLoggedIn && !isChatUnlocked" class="provider-onboarding-overlay">
+          <div class="tutorial-container">
+            <div class="tutorial-header">
+              <span class="tutorial-badge">Configuração Necessária</span>
+              <h1>Configure sua Inteligência Artificial</h1>
+              <p>O HUB-SABIÁ suporta múltiplos modelos de IA (Gemini, OpenAI e Claude) para responder suas dúvidas sobre editais acadêmicos.</p>
             </div>
-            <h2>Olá! Como posso ajudar?</h2>
-            <p>
-              {{
-                selectedEditalId
-                  ? "Faça perguntas sobre este edital específico."
-                  : "Selecione um edital ou pergunte sobre todos os editais disponíveis."
-              }}
-            </p>
 
-            <!-- Quick Start Buttons -->
-            <div class="quick-start" v-if="editais.length > 0">
-              <button
-                v-for="edital in editais.slice(0, 3)"
-                :key="edital.id"
-                class="quick-edital"
-                @click="selectEdital(edital.id)"
+            <!-- Steps Progress -->
+            <div class="steps-progress">
+              <div 
+                v-for="step in tutorialSteps" 
+                :key="step.step" 
+                class="step-dot"
+                :class="{ active: currentStep === step.step, completed: currentStep > step.step }"
+                @click="currentStep = step.step"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
+                {{ step.step }}
+              </div>
+            </div>
+
+            <!-- Step Content -->
+            <div class="step-card" :key="currentStep">
+              <div class="step-icon">{{ tutorialSteps[currentStep-1].icon }}</div>
+              <div class="step-info">
+                <span class="step-number">Passo {{ currentStep }} de 3</span>
+                <h3>{{ tutorialSteps[currentStep-1].title }}</h3>
+                <p>{{ tutorialSteps[currentStep-1].description }}</p>
+                
+                <router-link 
+                  v-if="tutorialSteps[currentStep-1].isProfileLink" 
+                  to="/perfil" 
+                  class="btn-tutorial-action"
                 >
-                  <path
-                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                  />
-                </svg>
-                {{ edital.titulo.slice(0, 30)
-                }}{{ edital.titulo.length > 30 ? "..." : "" }}
+                  {{ tutorialSteps[currentStep-1].actionLabel }}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </router-link>
+
+                <a 
+                  v-else-if="tutorialSteps[currentStep-1].actionUrl" 
+                  :href="tutorialSteps[currentStep-1].actionUrl" 
+                  target="_blank" 
+                  class="btn-tutorial-action"
+                >
+                  {{ tutorialSteps[currentStep-1].actionLabel }}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </a>
+              </div>
+            </div>
+
+            <div class="tutorial-navigation">
+              <button 
+                class="btn-nav prev" 
+                :disabled="currentStep === 1" 
+                @click="currentStep--"
+              >
+                Voltar
+              </button>
+              
+              <div v-if="currentStep === 3" class="final-form">
+                <router-link to="/perfil" class="btn-nav save">
+                  Ir para Configurações de IA
+                </router-link>
+              </div>
+
+              <button 
+                v-else
+                class="btn-nav next" 
+                @click="currentStep++"
+              >
+                Próximo Passo
               </button>
             </div>
+            
+            <p class="tutorial-help">
+              Precisa de ajuda? <router-link to="/perfil">Ver todas as opções de perfil</router-link>
+            </p>
           </div>
+        </div>
 
-          <!-- Messages -->
-          <div v-else class="messages-list">
-            <MessageBubble
-              v-for="(message, index) in messages"
-              :key="index"
-              :message="message"
-              :showSources="message.type === 'assistant'"
-            />
-          </div>
-
-          <!-- Loading Indicator -->
-          <div v-if="loading" class="loading-message">
-            <div class="loading-bubble">
-              <div class="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <span class="loading-text">Analisando editais...</span>
-            </div>
-          </div>
-
-          <!-- Scroll to bottom button -->
+        <!-- Normal Chat Content -->
+        <template v-else>
+          <!-- Toggle Sidebar Button -->
           <button
-            v-show="showScrollButton"
-            class="scroll-bottom"
-            @click="scrollToBottom"
+            class="toggle-sidebar"
+            @click="sidebarClosed = false"
+            v-if="sidebarClosed"
           >
             <svg
               viewBox="0 0 24 24"
@@ -262,44 +263,133 @@
               stroke="currentColor"
               stroke-width="2"
             >
-              <polyline points="6 9 12 15 18 9" />
+              <path d="M18 8L22 12L18 16" />
+              <path d="M2 12H22" />
             </svg>
           </button>
-        </div>
 
-        <!-- Input Area -->
-        <div class="input-area">
-          <form @submit.prevent="sendMessage" class="input-form">
-            <div class="input-wrapper">
-              <textarea
-                ref="inputField"
-                v-model="userInput"
-                placeholder="Digite sua pergunta sobre editais..."
-                rows="1"
-                @keydown.enter.exact.prevent="sendMessage"
-                @input="autoResize"
-              ></textarea>
-              <button
-                type="submit"
-                class="send-button"
-                :disabled="!userInput.trim() || loading"
-              >
+          <!-- Messages Container -->
+          <div ref="messagesContainer" class="messages-container">
+            <!-- Welcome Message -->
+            <div v-if="messages.length === 0" class="welcome-message">
+              <div class="welcome-icon">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
                 >
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  <path
+                    d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                  />
                 </svg>
-              </button>
+              </div>
+              <h2>Olá! Como posso ajudar?</h2>
+              <p>
+                {{
+                  selectedEditalId
+                    ? "Faça perguntas sobre este edital específico."
+                    : "Selecione um edital ou pergunte sobre todos os editais disponíveis."
+                }}
+              </p>
+
+              <!-- Quick Start Buttons -->
+              <div class="quick-start" v-if="editais.length > 0">
+                <button
+                  v-for="edital in editais.slice(0, 3)"
+                  :key="edital.id"
+                  class="quick-edital"
+                  @click="selectEdital(edital.id)"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                    />
+                  </svg>
+                  {{ edital.titulo.slice(0, 30)
+                  }}{{ edital.titulo.length > 30 ? "..." : "" }}
+                </button>
+              </div>
             </div>
-          </form>
-          <p class="input-hint">
-            Pressione Enter para enviar • IA baseada em RAG
-          </p>
-        </div>
+
+            <!-- Messages -->
+            <div v-else class="messages-list">
+              <MessageBubble
+                v-for="(message, index) in messages"
+                :key="index"
+                :message="message"
+                :showSources="message.type === 'assistant'"
+              />
+            </div>
+
+            <!-- Loading Indicator -->
+            <div v-if="loading" class="loading-message">
+              <div class="loading-bubble">
+                <div class="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span class="loading-text">Analisando editais...</span>
+              </div>
+            </div>
+
+            <!-- Scroll to bottom button -->
+            <button
+              v-show="showScrollButton"
+              class="scroll-bottom"
+              @click="scrollToBottom"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Input Area -->
+          <div class="input-area">
+            <form @submit.prevent="sendMessage" class="input-form">
+              <div class="input-wrapper">
+                <textarea
+                  ref="inputField"
+                  v-model="userInput"
+                  placeholder="Digite sua pergunta sobre editais..."
+                  rows="1"
+                  @keydown.enter.exact.prevent="sendMessage"
+                  @input="autoResize"
+                ></textarea>
+                <button
+                  type="submit"
+                  class="send-button"
+                  :disabled="!userInput.trim() || loading"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+            <p class="input-hint">
+              Pressione Enter para enviar • IA baseada em RAG
+            </p>
+          </div>
+        </template>
       </main>
     </div>
   </div>
@@ -315,8 +405,9 @@ import {
   getSuggestedQuestions,
   getConversations,
   getConversationMessages,
+  updateGeminiKey,
 } from "../services/api.js";
-import { error as showError } from "../utils/toast.js";
+import { error as showError, success as showSuccess } from "../utils/toast.js";
 import ThemeToggle from "../components/ThemeToggle.vue";
 
 const route = useRoute();
@@ -335,12 +426,42 @@ const sidebarClosed = ref(false);
 const showScrollButton = ref(false);
 const editaisLoaded = ref(false);
 const isLoggedIn = ref(false);
+const isChatUnlocked = ref(false);
+
+// Tutorial steps
+const currentStep = ref(1);
+const tutorialSteps = [
+  {
+    step: 1,
+    title: "Escolha seu Provedor",
+    description: "O HUB-SABIÁ suporta Google Gemini, OpenAI e Anthropic Claude. Escolha o seu preferido no perfil.",
+    icon: "🤖",
+    actionLabel: "Ver Provedores",
+    isProfileLink: true
+  },
+  {
+    step: 2,
+    title: "Obtenha sua Chave (Gemini)",
+    description: "Se optar pelo Gemini, você precisará de uma chave gratuita do Google AI Studio. OpenAI e Claude usam infraestrutura global.",
+    icon: "🔑",
+    actionLabel: "Abrir AI Studio",
+    actionUrl: "https://aistudio.google.com/app/apikey"
+  },
+  {
+    step: 3,
+    title: "Ative o Chat",
+    description: "Basta configurar seu provedor preferido e salvar. O chat será desbloqueado automaticamente!",
+    icon: "🚀",
+    actionLabel: "Ir para Perfil",
+    isProfileLink: true
+  }
+];
 
 // History management
 const conversations = ref([]);
 const currentConversationId = ref(null);
 
-// Check login status
+// Check login status and data
 onMounted(async () => {
   isLoggedIn.value = !!localStorage.getItem("auth_token");
 
@@ -348,6 +469,7 @@ onMounted(async () => {
 
   if (isLoggedIn.value) {
     fetchConversations();
+    checkUserKey();
   }
 
   // Check for edital ID in route
@@ -362,6 +484,25 @@ onMounted(async () => {
   // Initial scroll to bottom
   scrollToBottom();
 });
+
+function checkUserKey() {
+  try {
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      const user = JSON.parse(stored);
+      // O chat é liberado se:
+      // 1. O usuário tiver uma chave Gemini configurada
+      // 2. OU se o provedor preferido for OpenAI ou Claude (que usam chaves globais)
+      isChatUnlocked.value = !!(
+        user.has_gemini_key || 
+        user.preferred_provider === 'openai' || 
+        user.preferred_provider === 'claude'
+      );
+    }
+  } catch (err) {
+    isChatUnlocked.value = false;
+  }
+}
 
 async function fetchConversations() {
   try {
@@ -388,10 +529,12 @@ async function loadConversation(id) {
       });
       if (log.resposta) {
         transformedMessages.push({
+          id: log._id,
           type: "assistant",
           content: log.resposta,
           sources: log.metadata?.sources || [],
           timestamp: log.createdAt,
+          feedback: log.feedback,
         });
       }
     });
@@ -482,6 +625,7 @@ async function sendMessage() {
 
     // Add assistant message
     messages.value.push({
+      id: response.data.id,
       type: "assistant",
       content: response.data.resposta,
       sources: response.data.fontes,
@@ -1116,6 +1260,235 @@ function autoResize() {
   color: var(--color-gray-400);
   text-align: center;
   margin-top: 0.5rem;
+}
+
+/* AI Provider Onboarding Styles */
+.provider-onboarding-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--color-bg);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.tutorial-container {
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.tutorial-header {
+  margin-bottom: 2.5rem;
+}
+
+.tutorial-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 1rem;
+}
+
+.tutorial-header h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.tutorial-header p {
+  color: var(--color-gray-500);
+  line-height: 1.6;
+}
+
+.steps-progress {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.step-dot.active {
+  background: var(--color-primary-600);
+  color: white;
+  transform: scale(1.1);
+}
+
+.step-dot.completed {
+  background: var(--color-primary-100);
+  color: var(--color-primary-600);
+  border-color: var(--color-primary-200);
+}
+
+.step-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  border: 1px solid var(--color-border);
+  min-height: 300px;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.step-icon {
+  font-size: 4rem;
+}
+
+.step-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.step-number {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary-600);
+  text-transform: uppercase;
+}
+
+.step-info h3 {
+  font-size: 1.5rem;
+}
+
+.step-info p {
+  color: var(--color-gray-600);
+  line-height: 1.5;
+}
+
+.btn-tutorial-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--color-primary-600);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  text-decoration: none;
+  margin-top: 1rem;
+  transition: all 0.2s ease;
+}
+
+.btn-tutorial-action:hover {
+  background: var(--color-primary-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-primary);
+}
+
+.btn-tutorial-action svg {
+  width: 18px;
+  height: 18px;
+}
+
+.tutorial-navigation {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-nav {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-nav.prev {
+  background: var(--color-surface-2);
+  color: var(--color-gray-600);
+}
+
+.btn-nav.prev:hover:not(:disabled) {
+  background: var(--color-gray-200);
+}
+
+.btn-nav.next {
+  background: var(--color-primary-600);
+  color: white;
+}
+
+.btn-nav.next:hover {
+  background: var(--color-primary-700);
+}
+
+.final-form {
+  flex: 1;
+}
+
+.tutorial-input-group {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.tutorial-input-group input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+}
+
+.tutorial-input-group input:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+}
+
+.btn-nav.save {
+  background: var(--color-primary-600);
+  color: white;
+  white-space: nowrap;
+}
+
+.tutorial-help {
+  margin-top: 2rem;
+  font-size: 0.875rem;
+  color: var(--color-gray-400);
+}
+
+.tutorial-help a {
+  color: var(--color-primary-600);
+  font-weight: 600;
 }
 
 /* Responsive */

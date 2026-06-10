@@ -52,13 +52,44 @@
         </div>
         
         <!-- Metadata -->
-        <div v-if="message.metadata" class="message-meta">
-          <span v-if="message.metadata.processingTime">
-            Processado em {{ message.metadata.processingTime }}ms
-          </span>
-          <span v-if="message.metadata.chunksUsed">
-            {{ message.metadata.chunksUsed }} trechos analisados
-          </span>
+        <div v-if="message.metadata || message.id" class="message-meta">
+          <div class="meta-info">
+            <span v-if="message.metadata?.provider" class="provider-badge" :class="message.metadata.provider">
+              {{ formatProvider(message.metadata.provider) }}
+            </span>
+            <span v-if="message.metadata?.processingTime">
+              Processado em {{ message.metadata.processingTime }}ms
+            </span>
+            <span v-if="message.metadata?.chunksUsed">
+              {{ message.metadata.chunksUsed }} trechos analisados
+            </span>
+          </div>
+          
+          <!-- Feedback -->
+          <div v-if="message.type === 'assistant' && message.id" class="feedback-actions">
+            <button 
+              class="feedback-btn" 
+              :class="{ active: feedback === 1 }"
+              @click="handleFeedback(1)"
+              :disabled="feedback !== null"
+              title="Resposta útil"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+              </svg>
+            </button>
+            <button 
+              class="feedback-btn" 
+              :class="{ active: feedback === -1 }"
+              @click="handleFeedback(-1)"
+              :disabled="feedback !== null"
+              title="Resposta não ajudou"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -81,6 +112,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { submitFeedback } from '../services/api'
 
 const props = defineProps({
   message: {
@@ -94,6 +126,19 @@ const props = defineProps({
 })
 
 const showSourcesList = ref(false)
+const feedback = ref(props.message.feedback || null)
+
+async function handleFeedback(value) {
+  if (!props.message.id || feedback.value !== null) return
+  
+  try {
+    feedback.value = value
+    await submitFeedback(props.message.id, value)
+  } catch (error) {
+    console.error('Failed to submit feedback:', error)
+    feedback.value = null // Reset on error
+  }
+}
 
 function formatText(text) {
   if (!text) return ''
@@ -113,6 +158,14 @@ function formatText(text) {
   formatted = formatted.replace(/(<li>.*<\/li>)+/g, '<ul>$&</ul>')
   
   return formatted
+}
+
+function formatProvider(provider) {
+  const providers = {
+    'gemini-user': 'Gemini (Minha Chave)',
+    'gemini-system': 'Gemini (Sistema)',
+  }
+  return providers[provider] || provider
 }
 </script>
 
@@ -300,10 +353,70 @@ function formatText(text) {
 /* Message Meta */
 .message-meta {
   display: flex;
-  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 0.5rem;
   font-size: 0.6875rem;
   color: var(--color-text-muted);
+}
+
+.meta-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.provider-badge {
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  background: var(--color-surface-2);
+  color: var(--color-gray-600);
+}
+
+.provider-badge.gemini-user {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+}
+
+.dark .provider-badge.gemini-user {
+  background: rgba(22, 163, 74, 0.2);
+  color: var(--color-primary-400);
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.feedback-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+}
+
+.feedback-btn:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  color: var(--color-primary-600);
+}
+
+.feedback-btn.active {
+  color: var(--color-primary-600);
+  background: var(--color-primary-50);
+}
+
+.feedback-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.feedback-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Error Message */

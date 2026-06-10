@@ -107,6 +107,10 @@ export async function registerUser(userData) {
     email: user.email,
     role: user.role,
     nome: user.nome,
+    has_gemini_key: !!user.gemini_api_key,
+    has_openai_key: !!user.openai_api_key,
+    has_claude_key: !!user.claude_api_key,
+    preferred_provider: user.preferred_provider,
     createdAt: user.createdAt,
   };
 }
@@ -119,7 +123,8 @@ export async function registerUser(userData) {
  */
 export async function login(email, senha) {
   // Buscar usuário por email
-  const user = await User.findOne({ email });
+  // Selecionar chaves para os flags
+  const user = await User.findOne({ email }).select('+gemini_api_key +openai_api_key +claude_api_key');
 
   if (!user) {
     throw new Error('Email ou senha inválidos');
@@ -143,6 +148,10 @@ export async function login(email, senha) {
       email: user.email,
       role: user.role,
       nome: user.nome,
+      has_gemini_key: !!user.gemini_api_key,
+      has_openai_key: !!user.openai_api_key,
+      has_claude_key: !!user.claude_api_key,
+      preferred_provider: user.preferred_provider,
     },
     token
   };
@@ -154,7 +163,8 @@ export async function login(email, senha) {
  * @returns {Promise<object|null>} - Usuário ou null
  */
 export async function getUserById(userId) {
-  const user = await User.findById(userId);
+  // Selecionar chaves para os flags
+  const user = await User.findById(userId).select('+gemini_api_key +openai_api_key +claude_api_key');
 
   if (!user) {
     return null;
@@ -166,6 +176,10 @@ export async function getUserById(userId) {
     email: user.email,
     role: user.role,
     nome: user.nome,
+    has_gemini_key: !!user.gemini_api_key,
+    has_openai_key: !!user.openai_api_key,
+    has_claude_key: !!user.claude_api_key,
+    preferred_provider: user.preferred_provider,
     createdAt: user.createdAt,
   };
 }
@@ -176,7 +190,7 @@ export async function getUserById(userId) {
  * @returns {Promise<object|null>} - Usuário ou null
  */
 export async function getUserByEmail(email) {
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email }).select('+gemini_api_key +openai_api_key +claude_api_key');
 
   if (!user) {
     return null;
@@ -188,6 +202,10 @@ export async function getUserByEmail(email) {
     email: user.email,
     role: user.role,
     nome: user.nome,
+    has_gemini_key: !!user.gemini_api_key,
+    has_openai_key: !!user.openai_api_key,
+    has_claude_key: !!user.claude_api_key,
+    preferred_provider: user.preferred_provider,
     createdAt: user.createdAt,
   };
 }
@@ -215,7 +233,7 @@ export async function updateUserProfile(userId, updateData) {
     userId,
     updateFields,
     { new: true, runValidators: true }
-  );
+  ).select('+gemini_api_key +openai_api_key +claude_api_key');
 
   if (!updatedUser) {
     throw new Error('Usuário não encontrado');
@@ -227,6 +245,10 @@ export async function updateUserProfile(userId, updateData) {
     email: updatedUser.email,
     role: updatedUser.role,
     nome: updatedUser.nome,
+    has_gemini_key: !!updatedUser.gemini_api_key,
+    has_openai_key: !!updatedUser.openai_api_key,
+    has_claude_key: !!updatedUser.claude_api_key,
+    preferred_provider: updatedUser.preferred_provider,
     createdAt: updatedUser.createdAt,
     updatedAt: updatedUser.updatedAt,
   };
@@ -238,7 +260,7 @@ export async function updateUserProfile(userId, updateData) {
  */
 export async function listAllUsers() {
   const users = await User.find()
-    .select('-senha_hash')
+    .select('-senha_hash +gemini_api_key +openai_api_key +claude_api_key')
     .sort({ createdAt: -1 });
 
   return users.map(user => ({
@@ -247,6 +269,10 @@ export async function listAllUsers() {
     email: user.email,
     role: user.role,
     nome: user.nome,
+    has_gemini_key: !!user.gemini_api_key,
+    has_openai_key: !!user.openai_api_key,
+    has_claude_key: !!user.claude_api_key,
+    preferred_provider: user.preferred_provider,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   }));
@@ -265,4 +291,67 @@ export async function deleteUser(userId) {
   }
 
   return true;
+}
+
+/**
+ * Atualizar configuração de provider (API Key)
+ * @param {string} userId - ID do usuário
+ * @param {string} provider - Nome do provider (gemini, openai, claude)
+ * @param {string|null} apiKey - Chave de API
+ * @returns {Promise<boolean>} - true se atualizado
+ */
+export async function updateProviderConfig(userId, provider, apiKey) {
+  const updateField = {};
+  
+  if (provider === 'gemini') {
+    updateField.gemini_api_key = apiKey;
+  } else if (provider === 'openai') {
+    updateField.openai_api_key = apiKey;
+  } else if (provider === 'claude') {
+    updateField.claude_api_key = apiKey;
+  } else {
+    throw new Error('Provider não suportado');
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    updateField,
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    throw new Error('Usuário não encontrado');
+  }
+
+  return true;
+}
+
+/**
+ * Atualizar preferência de provider
+ * @param {string} userId - ID do usuário
+ * @param {string} provider - Nome do provider
+ * @returns {Promise<boolean>} - true se atualizado
+ */
+export async function updatePreferredProvider(userId, provider) {
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { preferred_provider: provider },
+    { new: true }
+  );
+
+  if (!updatedUser) {
+    throw new Error('Usuário não encontrado');
+  }
+
+  return true;
+}
+
+/**
+ * Atualizar chave de API do Gemini para o usuário (Legado)
+ * @param {string} userId - ID do usuário
+ * @param {string|null} apiKey - Chave de API do Gemini
+ * @returns {Promise<boolean>} - true se atualizado
+ */
+export async function updateGeminiKey(userId, apiKey) {
+  return updateProviderConfig(userId, 'gemini', apiKey);
 }

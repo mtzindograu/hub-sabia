@@ -1,3 +1,5 @@
+import ErrorLog from '../models/ErrorLog.js';
+
 /**
  * Error Handling Middleware
  * Centralized error handling for the API
@@ -57,16 +59,44 @@ export class RateLimitError extends APIError {
 /**
  * Global error handler middleware
  */
-export function errorHandler(err, req, res, next) {
-  // Log error for debugging
+export async function errorHandler(err, req, res, next) {
+  // Extract info for logging
+  const statusCode = err.statusCode || 500;
+  const errorMessage = err.message || 'Internal Server Error';
+  const stack = err.stack;
+  const path = req.path;
+  const method = req.method;
+  const userId = req.user?._id || null;
+  const payload = req.method !== 'GET' ? req.body : null;
+
+  // Log error for debugging (console)
   console.error('Error:', {
-    message: err.message,
+    message: errorMessage,
     code: err.errorCode,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    path: req.path,
-    method: req.method,
+    stack: process.env.NODE_ENV === 'development' ? stack : undefined,
+    path: path,
+    method: method,
     timestamp: new Date().toISOString()
   });
+
+  // Persist to MongoDB (Fire and forget, don't wait to respond to user)
+  // Wrapped in try/catch to ensure it doesn't break the system
+  try {
+    ErrorLog.create({
+      mensagem_erro: errorMessage,
+      stack_erro: stack,
+      rota_api: `${method} ${path}`,
+      status_code: statusCode,
+      usuario_id: userId,
+      payload_recebido: payload,
+      origem_erro: 'backend',
+      horario: new Date()
+    }).catch(dbErr => {
+      console.error('[ErrorLogger] Failed to save error to MongoDB:', dbErr.message);
+    });
+  } catch (logErr) {
+    console.error('[ErrorLogger] Critical error in logging middleware:', logErr.message);
+  }
   
   // Handle known API errors
   if (err instanceof APIError) {

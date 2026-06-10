@@ -7,8 +7,8 @@
  */
 
 import Edital from "../models/Edital.js";
-import { generateQueryEmbedding, cosineSimilarity } from "./embedding.service.js";
-import { generateResponse } from "./groq.service.js";
+import { generateQueryEmbedding } from "./embedding.service.js";
+import providerManager, { GEMINI_MODELS } from "./provider-manager.js";
 import { generateSearchQueries, calculateTextRelevance } from "./query-expansion.service.js";
 
 // RAG Configuration - Improved for better recall
@@ -21,106 +21,73 @@ const RAG_CONFIG = {
 };
 
 /**
- * Process a question using RAG pipeline with query expansion and hybrid search
+ * Process a question using RAG pipeline with hybrid search and hybrid AI provider
  * @param {string} question - User question
  * @param {string} editalId - Optional specific edital ID
+ * @param {Object} options - Options including userApiKey
  * @returns {Promise<Object>} RAG response with sources
  */
-export async function processQuestion(question, editalId = null) {
+export async function processQuestion(question, editalId = null, options = {}) {
   const startTime = Date.now();
+  const { userApiKey = null } = options;
 
   try {
     console.log(`[RAG] Processing question: "${question.slice(0, 50)}..."`);
-    console.log(`[RAG] Edital ID: ${editalId || 'TODOS OS EDITAIS'}`);
-
+    
     // Step 0: Query expansion - gerar variações da pergunta
-    console.log("[RAG] Step 0: Expanding query with synonyms and variations...");
     const expandedQueries = generateSearchQueries(question);
-    console.log(`[RAG] Generated ${expandedQueries.queries.length} query variations`);
-    console.log(`[RAG] Keywords: ${expandedQueries.keywords.join(', ')}`);
 
-    // Step 1: Generate embedding for the original question
-    console.log("[RAG] Step 1: Generating question embedding...");
-    const embeddingResult = await generateQueryEmbedding(question);
-
-    if (!embeddingResult.success) {
-      console.error("[RAG] ERRO: Falha ao gerar embedding:", embeddingResult.error);
-      throw new Error(
-        `Failed to generate question embedding: ${embeddingResult.error}`,
-      );
-    }
-    console.log("[RAG] EMBEDDING GERADO COM SUCESSO");
-    console.log(`[RAG] Embedding size: ${embeddingResult.embedding?.length || 0} dimensões`);
-
-    // Step 2: Retrieve relevant chunks from database (with expanded queries)
-    console.log("[RAG] Step 2: Retrieving relevant chunks with hybrid search...");
+    // Step 1 & 2: Retrieve relevant chunks from database (Hybrid Search + Hybrid AI)
+    console.log("[RAG] Step 1 & 2: Retrieving relevant chunks...");
     let chunks = await retrieveRelevantChunksHybrid(
-      embeddingResult.embedding,
+      question,
       expandedQueries,
       editalId,
+      { userApiKey }
     );
-
-    console.log(`[RAG] RESULTADOS DA BUSCA: ${chunks.length} chunks encontrados`);
 
     // Step 3: If no chunks found, try keyword-only fallback
     if (chunks.length === 0) {
-      console.log("[RAG] Step 2b: Fallback to keyword-only search...");
       chunks = await retrieveByKeywords(expandedQueries.keywords, editalId);
-      console.log(`[RAG] KEYWORD FALLBACK: ${chunks.length} chunks encontrados`);
     }
 
     if (chunks.length === 0) {
-      console.warn("[RAG] NENHUM CHUNK ENCONTRADO - Retornando mensagem de erro");
       return {
         success: true,
-        response:
-          "Não encontrei essa informação nos editais disponíveis 😕 Tenta reformular sua pergunta ou ser mais específico sobre o que você quer saber!",
+        response: "Não encontrei essa informação nos editais disponíveis 😕 Tenta reformular sua pergunta ou ser mais específico!",
         sources: [],
         metadata: {
           processingTime: Date.now() - startTime,
           chunksRetrieved: 0,
-          editalId,
-          fallbackUsed: true,
-          expandedQueries: expandedQueries.queries.length,
         },
       };
     }
 
-    // Step 4: Filter and rank chunks (with hybrid scoring)
-    console.log("[RAG] Step 3: Filtering and ranking chunks with hybrid scoring...");
-    const filteredChunks = filterAndRankChunksHybrid(
-      chunks,
-      expandedQueries.keywords,
-      question,
-    );
-    console.log(`[RAG] CHUNKS FILTRADOS: ${filteredChunks.length} chunks após filtragem`);
+    // Step 4: Filter and rank chunks
+    const filteredChunks = filterAndRankChunksHybrid(chunks, expandedQueries.keywords, question);
 
-    // Step 5: Generate response using Groq
-    console.log("[RAG] Step 4: Generating AI response...");
-    const contextText = filteredChunks.map(c => c.conteudo).join('\n\n');
-    console.log(`[RAG] CONTEXTO PARA IA: ${contextText.length} caracteres`);
-    const responseResult = await generateResponse(question, filteredChunks);
+    // Step 5: Generate response using Selected AI Provider
+    console.log("[RAG] Step 5: Generating AI response...");
+    
+    console.log(`[RAG] Using Provider: ${options.provider || 'default'}...`);
+    const responseResult = await providerManager.generateResponse(question, filteredChunks, { ...options, userApiKey });
 
     if (!responseResult.success) {
-      throw new Error(`Failed to generate response: ${responseResult.error}`);
+      throw new Error(`AI Provider failed: ${responseResult.error}`);
     }
-
-    const processingTime = Date.now() - startTime;
-    console.log(`[RAG] Pipeline completed in ${processingTime}ms`);
 
     return {
       success: true,
       response: responseResult.response,
       sources: formatSources(filteredChunks),
       metadata: {
-        processingTime,
+        processingTime: Date.now() - startTime,
         chunksRetrieved: chunks.length,
         chunksUsed: filteredChunks.length,
         editalId,
+        provider: responseResult.metadata?.provider || "unknown",
         model: responseResult.metadata?.model,
-        fallbackUsed: chunks.some(c => c.method === 'keyword'),
-        expandedQueries: expandedQueries.queries.length,
-        keywordsUsed: expandedQueries.keywords,
+        usage: responseResult.metadata?.usage,
       },
     };
   } catch (error) {
@@ -128,8 +95,7 @@ export async function processQuestion(question, editalId = null) {
     return {
       success: false,
       error: error.message,
-      response:
-        "Ops! Algo deu errado ao processar sua pergunta 😅 Tenta de novo em instantes!",
+      response: "Ops! Algo deu errado ao processar sua pergunta 😅 Tenta de novo em instantes!",
       sources: [],
       metadata: {
         processingTime: Date.now() - startTime,
@@ -141,27 +107,62 @@ export async function processQuestion(question, editalId = null) {
 
 /**
  * Retrieve relevant chunks using HYBRID search (vector + query expansion)
- * @param {Array<number>} embedding - Primary query embedding
+ * @param {string} question - User question
  * @param {Object} expandedQueries - Expanded query variations
  * @param {string} editalId - Optional edital filter
+ * @param {Object} options - Options including userApiKey
  * @returns {Promise<Array<Object>>} Relevant chunks
  */
-async function retrieveRelevantChunksHybrid(embedding, expandedQueries, editalId = null) {
+async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId = null, options = {}) {
   try {
+    const { userApiKey = null } = options;
     console.log(`[RAG] Busca híbrida: editalId=${editalId || 'null'}`);
-    console.log(`[RAG] Query expansions: ${expandedQueries.queries.length}`);
 
     let allChunks = [];
 
-    // Busca vetorial principal
+    // Case 1: Specific Edital
     if (editalId) {
-      allChunks = await Edital.buscarChunksPorSimilaridade(
-        editalId,
-        embedding,
-        RAG_CONFIG.topK,
-      );
-    } else {
-      allChunks = await Edital.buscarGlobal(embedding, RAG_CONFIG.topK);
+      const edital = await Edital.findById(editalId);
+      if (!edital) throw new Error("Edital not found");
+
+      const model = edital.embedding_model || 'local';
+      console.log(`[RAG] Edital usa modelo: ${model}`);
+
+      const embeddingResult = await generateQueryEmbedding(question, { userApiKey, model });
+      if (embeddingResult.success) {
+        allChunks = await Edital.buscarChunksPorSimilaridade(
+          editalId,
+          embeddingResult.embedding,
+          RAG_CONFIG.topK,
+        );
+      }
+    } 
+    // Case 2: Global Search (across multiple editais)
+    else {
+      // Find all unique embedding models in the database
+      const models = await Edital.distinct("embedding_model");
+      const modelsToUse = models.length > 0 ? models : ['local'];
+      
+      console.log(`[RAG] Busca global em modelos: ${modelsToUse.join(', ')}`);
+
+      // Generate embeddings for each model and search
+      for (const model of modelsToUse) {
+        const embeddingResult = await generateQueryEmbedding(question, { userApiKey, model });
+        if (embeddingResult.success) {
+          const chunks = await Edital.buscarGlobal(embeddingResult.embedding, RAG_CONFIG.topK);
+          // Only add chunks that match this model's expected dimension (double check)
+          allChunks.push(...chunks);
+        }
+      }
+      
+      // Deduplicate and re-sort if multiple models returned same chunks (unlikely but possible if logic changes)
+      const seen = new Set();
+      allChunks = allChunks.filter(c => {
+        const key = `${c.edital_id}-${c.chunk_index}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).sort((a, b) => b.similarity - a.similarity).slice(0, RAG_CONFIG.topK);
     }
 
     console.log(`[RAG] Busca vetorial retornou ${allChunks.length} chunks`);
@@ -177,7 +178,7 @@ async function retrieveRelevantChunksHybrid(embedding, expandedQueries, editalId
         editalId,
       );
 
-      // Mesclar resultados (evitando duplicatas por chunk_index + edital_id)
+      // Mesclar resultados
       const seen = new Set(allChunks.map(c => `${c.edital_id || editalId}-${c.chunk_index}`));
       for (const chunk of keywordChunks) {
         const key = `${chunk.edital_id || editalId}-${chunk.chunk_index}`;

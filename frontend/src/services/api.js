@@ -36,15 +36,34 @@ api.interceptors.response.use(
   (response) => {
     return response.data;
   },
-  (error) => {
+  async (error) => {
     // Handle common errors
-    if (error.response) {
-      const status = error.response.status;
-      const message =
-        error.response.data?.error ||
-        error.response.data?.message ||
-        "An error occurred";
+    const status = error.response?.status;
+    const message =
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      "An error occurred";
 
+    // Prepare error report
+    const errorReport = {
+      mensagem_erro: message,
+      stack_erro: error.stack,
+      rota_api: `${error.config?.method?.toUpperCase()} ${error.config?.url}`,
+      status_code: status,
+      payload_recebido: error.config?.data ? JSON.parse(error.config.data) : null,
+      origem_erro: 'frontend'
+    };
+
+    // Report error to backend (don't await, fire and forget)
+    // Only report if it's NOT the error logging endpoint itself to avoid loops
+    if (!error.config?.url?.includes('/logs/error')) {
+      api.post('/logs/error', errorReport).catch(reportErr => {
+        console.error('[API] Failed to report error to backend:', reportErr.message);
+      });
+    }
+
+    if (error.response) {
       // 401 - Não autenticado: limpar dados e redirecionar para login
       if (status === 401) {
         localStorage.removeItem("auth_token");
@@ -161,6 +180,16 @@ export async function askQuestion(data) {
 }
 
 /**
+ * Submit feedback for a chat interaction
+ * @param {string} logId - Chat log ID
+ * @param {number} feedback - 1 for positive, -1 for negative
+ * @returns {Promise<Object>} Feedback result
+ */
+export async function submitFeedback(logId, feedback) {
+  return api.post("/chat/feedback", { logId, feedback });
+}
+
+/**
  * Get suggested questions for an edital
  * @param {string} editalId - Edital ID
  * @returns {Promise<Object>} Suggested questions
@@ -259,7 +288,26 @@ export async function getCurrentUser() {
  * @returns {Promise<Object>} Updated user
  */
 export async function updateProfile(updateData) {
-  return api.put("/auth/profile", updateData);
+  return api.post("/auth/profile", updateData);
+}
+
+/**
+ * Update Provider API Key
+ * @param {string} provider - 'gemini', 'openai' or 'claude'
+ * @param {string} apiKey - API Key (or null to remove)
+ * @returns {Promise<Object>} Update result
+ */
+export async function updateProviderConfig(provider, apiKey) {
+  return api.post("/auth/provider-config", { provider, apiKey });
+}
+
+/**
+ * Update Preferred Provider
+ * @param {string} provider - 'gemini', 'openai' or 'claude'
+ * @returns {Promise<Object>} Update result
+ */
+export async function updatePreferredProvider(provider) {
+  return api.post("/auth/provider-preference", { provider });
 }
 
 /**
@@ -268,6 +316,15 @@ export async function updateProfile(updateData) {
  */
 export async function getAllUsers() {
   return api.get("/auth/users");
+}
+
+/**
+ * Update Gemini API Key
+ * @param {string} apiKey - Gemini API Key (or null to remove)
+ * @returns {Promise<Object>} Update result
+ */
+export async function updateGeminiKey(apiKey) {
+  return api.post("/auth/gemini-key", { apiKey });
 }
 
 /**

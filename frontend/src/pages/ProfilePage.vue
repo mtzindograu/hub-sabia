@@ -81,6 +81,164 @@
             </div>
           </div>
 
+          <!-- Integração IA -->
+          <div class="profile-section">
+            <h3 class="section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
+              </svg>
+              Configuração de IA
+            </h3>
+
+            <p class="section-description">
+              O HUB-SABIÁ suporta múltiplos modelos de IA. Configure suas chaves para habilitar o chat.
+            </p>
+
+            <div class="provider-preference-card">
+              <div class="input-group">
+                <label for="preferred-provider">Provedor Preferencial</label>
+                <select 
+                  id="preferred-provider" 
+                  v-model="preferredProvider" 
+                  class="form-select"
+                  @change="handleSavePreference"
+                  :disabled="loading"
+                >
+                  <option value="gemini">Google Gemini (Padrão)</option>
+                  <option value="openai">OpenAI (GPT-4o/3.5)</option>
+                  <option value="claude">Anthropic Claude</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="providers-list">
+              <!-- Gemini -->
+              <div class="provider-item" :class="{ 'is-active': hasGeminiKey }">
+                <div class="provider-header">
+                  <div class="provider-info">
+                    <span class="provider-name">Google Gemini</span>
+                    <span class="provider-badge" :class="hasGeminiKey ? 'active' : 'inactive'">
+                      {{ hasGeminiKey ? 'Conectado' : 'Não configurado' }}
+                    </span>
+                  </div>
+                  <button @click="toggleProvider('gemini')" class="btn-toggle">
+                    {{ activeProviderForm === 'gemini' ? 'Fechar' : (hasGeminiKey ? 'Alterar' : 'Configurar') }}
+                  </button>
+                </div>
+
+                <div v-if="activeProviderForm === 'gemini'" class="provider-form">
+                  <div class="input-group">
+                    <label>Chave API Gemini</label>
+                    <div class="password-input">
+                      <input 
+                        :type="showKeys.gemini ? 'text' : 'password'" 
+                        v-model="providerKeys.gemini" 
+                        placeholder="AIza..."
+                      />
+                      <button @click="showKeys.gemini = !showKeys.gemini" class="btn-show-hide" type="button">
+                        <svg v-if="showKeys.gemini" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                          <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="provider-actions">
+                    <button class="btn-save" @click="handleSaveKey('gemini')" :disabled="loading || !providerKeys.gemini">Salvar</button>
+                    <button v-if="hasGeminiKey" class="btn-remove" @click="handleRemoveKey('gemini')" :disabled="loading">Remover</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- OpenAI -->
+              <div class="provider-item" :class="{ 'is-active': hasOpenAIKey }">
+                <div class="provider-header">
+                  <div class="provider-info">
+                    <span class="provider-name">OpenAI (GPT)</span>
+                    <span class="provider-badge" :class="hasOpenAIKey ? 'active' : 'inactive'">
+                      {{ hasOpenAIKey ? 'Conectado' : 'Não configurado' }}
+                    </span>
+                  </div>
+                  <button @click="toggleProvider('openai')" class="btn-toggle">
+                    {{ activeProviderForm === 'openai' ? 'Fechar' : (hasOpenAIKey ? 'Alterar' : 'Configurar') }}
+                  </button>
+                </div>
+
+                <div v-if="activeProviderForm === 'openai'" class="provider-form">
+                  <div class="input-group">
+                    <label>Chave API OpenAI</label>
+                    <div class="password-input">
+                      <input 
+                        :type="showKeys.openai ? 'text' : 'password'" 
+                        v-model="providerKeys.openai" 
+                        placeholder="sk-..."
+                      />
+                      <button @click="showKeys.openai = !showKeys.openai" class="btn-show-hide" type="button">
+                        <svg v-if="showKeys.openai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                          <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="provider-actions">
+                    <button class="btn-save" @click="handleSaveKey('openai')" :disabled="loading || !providerKeys.openai">Salvar</button>
+                    <button v-if="hasOpenAIKey" class="btn-remove" @click="handleRemoveKey('openai')" :disabled="loading">Remover</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Claude -->
+              <div class="provider-item" :class="{ 'is-active': hasClaudeKey }">
+                <div class="provider-header">
+                  <div class="provider-info">
+                    <span class="provider-name">Anthropic Claude</span>
+                    <span class="provider-badge" :class="hasClaudeKey ? 'active' : 'inactive'">
+                      {{ hasClaudeKey ? 'Conectado' : 'Não configurado' }}
+                    </span>
+                  </div>
+                  <button @click="toggleProvider('claude')" class="btn-toggle">
+                    {{ activeProviderForm === 'claude' ? 'Fechar' : (hasClaudeKey ? 'Alterar' : 'Configurar') }}
+                  </button>
+                </div>
+
+                <div v-if="activeProviderForm === 'claude'" class="provider-form">
+                  <div class="input-group">
+                    <label>Chave API Claude</label>
+                    <div class="password-input">
+                      <input 
+                        :type="showKeys.claude ? 'text' : 'password'" 
+                        v-model="providerKeys.claude" 
+                        placeholder="sk-ant-..."
+                      />
+                      <button @click="showKeys.claude = !showKeys.claude" class="btn-show-hide" type="button">
+                        <svg v-if="showKeys.claude" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                          <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="provider-actions">
+                    <button class="btn-save" @click="handleSaveKey('claude')" :disabled="loading || !providerKeys.claude">Salvar</button>
+                    <button v-if="hasClaudeKey" class="btn-remove" @click="handleRemoveKey('claude')" :disabled="loading">Remover</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           <!-- Ações -->
           <div class="profile-actions">
             <button class="btn-action btn-edit" @click="handleEdit">
@@ -156,11 +314,26 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
-import { logout } from '../services/api.js'
-import { info } from '../utils/toast.js'
+import { logout, getCurrentUser, updateProviderConfig, updatePreferredProvider } from '../services/api.js'
+import { info, success, error as toastError } from '../utils/toast.js'
 
 const router = useRouter()
 const currentUser = ref(null)
+const loading = ref(false)
+
+// State for Multi-Provider
+const preferredProvider = ref('gemini')
+const activeProviderForm = ref(null)
+const providerKeys = ref({
+  gemini: '',
+  openai: '',
+  claude: ''
+})
+const showKeys = ref({
+  gemini: false,
+  openai: false,
+  claude: false
+})
 
 const userName = computed(() => currentUser.value?.nome || currentUser.value?.email?.split('@')[0] || 'Usuário')
 const userInitials = computed(() => {
@@ -172,6 +345,11 @@ const userRole = computed(() => currentUser.value?.role || 'user')
 const userRoleLabel = computed(() => userRole.value === 'admin' ? 'Administrador' : 'Usuário')
 const isAdmin = computed(() => userRole.value === 'admin')
 
+// Flags for keys
+const hasGeminiKey = computed(() => !!currentUser.value?.has_gemini_key)
+const hasOpenAIKey = computed(() => !!currentUser.value?.has_openai_key)
+const hasClaudeKey = computed(() => !!currentUser.value?.has_claude_key)
+
 const memberSince = computed(() => {
   if (!currentUser.value?.createdAt) return 'Data indisponível'
   const date = new Date(currentUser.value.createdAt)
@@ -180,6 +358,84 @@ const memberSince = computed(() => {
     year: 'numeric'
   })
 })
+
+async function fetchUserData() {
+  try {
+    const response = await getCurrentUser()
+    if (response.success) {
+      currentUser.value = response.data
+      preferredProvider.value = response.data.preferred_provider || 'gemini'
+      localStorage.setItem('user', JSON.stringify(response.data))
+    }
+  } catch (err) {
+    console.error('Erro ao buscar dados do usuário:', err)
+  }
+}
+
+function toggleProvider(provider) {
+  if (activeProviderForm.value === provider) {
+    activeProviderForm.value = null
+  } else {
+    activeProviderForm.value = provider
+    providerKeys.value[provider] = ''
+  }
+}
+
+async function handleSaveKey(provider) {
+  const key = providerKeys.value[provider]
+  if (!key) return
+
+  loading.value = true
+  try {
+    const response = await updateProviderConfig(provider, key.trim())
+    if (response.success) {
+      success(`Chave do ${provider.toUpperCase()} configurada com sucesso!`)
+      providerKeys.value[provider] = ''
+      activeProviderForm.value = null
+      await fetchUserData()
+    } else {
+      toastError(response.message || 'Erro ao salvar chave')
+    }
+  } catch (err) {
+    toastError(err.message || 'Erro ao conectar com o servidor')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleRemoveKey(provider) {
+  if (!confirm(`Remover chave do ${provider.toUpperCase()}?`)) return
+
+  loading.value = true
+  try {
+    const response = await updateProviderConfig(provider, null)
+    if (response.success) {
+      success('Chave removida.')
+      await fetchUserData()
+    } else {
+      toastError(response.message || 'Erro ao remover chave')
+    }
+  } catch (err) {
+    toastError(err.message || 'Erro ao conectar com o servidor')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleSavePreference() {
+  loading.value = true
+  try {
+    const response = await updatePreferredProvider(preferredProvider.value)
+    if (response.success) {
+      success(`Provedor padrão alterado para ${preferredProvider.value}`)
+      await fetchUserData()
+    }
+  } catch (err) {
+    toastError('Erro ao salvar preferência')
+  } finally {
+    loading.value = false
+  }
+}
 
 function handleEdit() {
   // Placeholder para futura implementação de edição
@@ -192,7 +448,7 @@ function handleLogout() {
   router.push('/login')
 }
 
-onMounted(() => {
+onMounted(async () => {
   const stored = localStorage.getItem('user')
   if (stored) {
     try {
@@ -201,6 +457,9 @@ onMounted(() => {
       currentUser.value = null
     }
   }
+  
+  // Refresh data from API to get has_gemini_key status
+  await fetchUserData()
 })
 </script>
 
@@ -305,6 +564,255 @@ onMounted(() => {
   font-size: 0.9375rem;
   color: var(--color-gray-500);
   margin: 0 0 0.75rem;
+}
+
+/* Integração IA */
+.profile-section {
+  margin-top: 2rem;
+  margin-bottom: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin-bottom: 0.5rem;
+}
+
+.section-description {
+  font-size: 0.875rem;
+  color: var(--color-gray-500);
+  margin-bottom: 1.5rem;
+}
+
+.provider-preference-card {
+  background: var(--color-surface-2);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  margin-bottom: 1.5rem;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  background: var(--color-surface);
+  color: var(--color-gray-900);
+  cursor: pointer;
+}
+
+.providers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.provider-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.provider-item.is-active {
+  border-color: var(--color-primary-300);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.05);
+}
+
+.provider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem;
+}
+
+.provider-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.provider-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+.provider-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+}
+
+.provider-badge.active {
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+}
+
+.provider-badge.inactive {
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
+}
+
+.btn-toggle {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-gray-700);
+  cursor: pointer;
+}
+
+.provider-form {
+  padding: 1.25rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+}
+
+.provider-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.btn-save {
+  background: var(--color-primary-600);
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  flex: 1;
+}
+
+.btn-remove {
+  background: white;
+  color: var(--color-danger-600);
+  border: 1px solid var(--color-danger-200);
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.password-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  padding-right: 3rem;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-gray-900);
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+}
+
+.password-input input:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.btn-show-hide {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.btn-show-hide:hover {
+  color: var(--color-primary-600);
+}
+
+.btn-show-hide svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gemini-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-gemini {
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-save {
+  background: var(--color-primary-600);
+  color: white;
+  flex: 2;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: var(--color-primary-700);
+  box-shadow: var(--shadow-primary);
+  transform: translateY(-1px);
+}
+
+.btn-remove {
+  background: var(--color-surface);
+  color: var(--color-danger-600);
+  border: 1.5px solid var(--color-danger-100);
+  flex: 1;
+}
+
+.btn-remove:hover:not(:disabled) {
+  background: var(--color-danger-50);
+  border-color: var(--color-danger-200);
+}
+
+.btn-gemini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .role-badge {

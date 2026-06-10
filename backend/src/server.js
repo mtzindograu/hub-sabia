@@ -18,6 +18,8 @@ import { connectDB } from "./config/database.js";
 import editalRoutes from "./routes/edital.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import authRoutes from "./routes/auth.routes.js";
+import errorRoutes from "./routes/error.routes.js";
+import { errorHandler } from "./middleware/errorHandler.js";
 
 // Load environment variables
 dotenv.config();
@@ -100,6 +102,7 @@ app.get("/api/health", (req, res) => {
 // Mount routes
 app.use("/api/auth", authRoutes);
 app.use("/api/edital", editalRoutes);
+app.use("/api/logs/error", errorRoutes);
 
 // Rota para listar todos os editais
 app.get("/api/editais", async (req, res) => {
@@ -269,19 +272,7 @@ app.use((req, res) => {
 });
 
 // Global Error Handler
-app.use((err, req, res, next) => {
-  console.error("Error:", err);
-
-  const statusCode = err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-
-  res.status(statusCode).json({
-    error: err.name || "Error",
-    message: message,
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    timestamp: new Date().toISOString(),
-  });
-});
+app.use(errorHandler);
 
 // ============================================
 // SERVER STARTUP
