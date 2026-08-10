@@ -4,13 +4,26 @@
  */
 
 /**
+ * Redige segredos (API keys) de mensagens de erro antes de logar/devolver ao cliente.
+ * @param {string} message - Mensagem original
+ * @returns {string} Mensagem com chaves redigidas
+ */
+export function sanitizeProviderMessage(message) {
+  if (typeof message !== "string") return String(message || "Erro desconhecido");
+  return message
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "sk-***")
+    .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g, "AIza***")
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{10,}\b/gi, "Bearer ***");
+}
+
+/**
  * Normalizes errors from different AI providers into standard categories
  * @param {Error|Object} error - Original error object
  * @param {string} provider - Provider name
  * @returns {Object} Normalized error
  */
 export function normalizeProviderError(error, provider) {
-  const message = error.message || error.toString();
+  const message = sanitizeProviderMessage(error.message || error.toString());
   let category = 'UNKNOWN';
 
   // Category mapping
@@ -63,7 +76,10 @@ export function estimateCost(provider, model, promptTokens, completionTokens) {
   if (!providerPrices) return 0;
 
   // Find model price (supports partial matches like 'models/gemini-1.5-flash')
-  const modelKey = Object.keys(providerPrices).find(k => model.includes(k));
+  // Longest match first: evita 'gpt-4o' casar antes de 'gpt-4o-mini'
+  const modelKey = Object.keys(providerPrices)
+    .sort((a, b) => b.length - a.length)
+    .find(k => model.includes(k));
   const modelPrices = providerPrices[modelKey];
 
   if (!modelPrices) return 0;

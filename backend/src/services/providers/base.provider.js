@@ -23,7 +23,7 @@ export default class BaseProvider {
     throw new Error("Method generateEditalSummary must be implemented");
   }
 
-  async streamResponse(question, contextChunks, options) {
+  async *streamResponse(question, contextChunks, options) {
     throw new Error("Method streamResponse must be implemented");
   }
 }

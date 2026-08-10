@@ -25,15 +25,14 @@ let EMBEDDING_MODEL = GEMINI_MODELS.EMBEDDING;
 const SYSTEM_API_KEY = process.env.GEMINI_API_KEY;
 
 /**
- * Helper to add timeout to a promise
+ * Helper to add timeout to a promise (sem timer órfão)
  */
 const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS) => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => 
-      setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs)
-    )
-  ]);
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 };
 
 /**
@@ -131,11 +130,11 @@ export class GeminiProvider extends BaseProvider {
       }
     }
 
-    // All models failed with 503
+    // All models failed with 503 (unavailable/overloaded)
     return { 
       success: false, 
       error: "O serviço do Gemini está temporariamente sobrecarregado. Tente novamente em alguns instantes.", 
-      errorCategory: 'QUOTA_EXCEEDED' 
+      errorCategory: 'RATE_LIMIT' 
     };
   }
 
@@ -156,7 +155,8 @@ export class GeminiProvider extends BaseProvider {
         contents: [{ role: 'user', parts: [{ text: prompt }] }]
       });
 
-      for await (const chunk of stream.stream) {
+      // @google/genai@2.6.0: o valor aguardado JÁ É o AsyncGenerator — iterar direto (sem .stream)
+      for await (const chunk of stream) {
         const text = getTextFromResponse(chunk);
         if (text) yield { done: false, text };
       }
@@ -193,13 +193,11 @@ export class GeminiProvider extends BaseProvider {
         metadata: { provider: 'gemini', model: EMBEDDING_MODEL }
       };
     } catch (error) {
-      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
+      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateEmbedding:", {
         message: error.message,
         status: error.status,
         code: error.code,
-        name: error.name,
-        stack: error.stack,
-        fullError: error
+        name: error.name
       });
       const normalized = normalizeProviderError(error, 'gemini');
       return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
@@ -252,13 +250,11 @@ export class GeminiProvider extends BaseProvider {
         }
       };
     } catch (error) {
-      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
+      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".extractMainPoints:", {
         message: error.message,
         status: error.status,
         code: error.code,
-        name: error.name,
-        stack: error.stack,
-        fullError: error
+        name: error.name
       });
       const normalized = normalizeProviderError(error, 'gemini');
       return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
@@ -295,13 +291,11 @@ export class GeminiProvider extends BaseProvider {
         }
       };
     } catch (error) {
-      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
+      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateEditalSummary:", {
         message: error.message,
         status: error.status,
         code: error.code,
-        name: error.name,
-        stack: error.stack,
-        fullError: error
+        name: error.name
       });
       const normalized = normalizeProviderError(error, 'gemini');
       return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };

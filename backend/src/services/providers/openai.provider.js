@@ -20,15 +20,14 @@ let DEFAULT_MODEL = OPENAI_MODELS.FAST;
 const SYSTEM_API_KEY = process.env.OPENAI_API_KEY;
 
 /**
- * Helper to add timeout to a promise
+ * Helper to add timeout to a promise (sem timer órfão)
  */
 const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS) => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => 
-      setTimeout(() => reject(new Error(`OpenAI Request timeout after ${timeoutMs}ms`)), timeoutMs)
-    )
-  ]);
+  let timer;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`OpenAI Request timeout after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 };
 
 export class OpenAIProvider extends BaseProvider {
@@ -65,6 +64,10 @@ export class OpenAIProvider extends BaseProvider {
         ],
       }));
 
+      const content = result.choices[0]?.message?.content || "";
+      if (!content) {
+        return { success: false, error: "O modelo retornou resposta vazia", errorCategory: 'INVALID_REQUEST' };
+      }
       const usage = result.usage || {};
       const promptTokens = usage.prompt_tokens || 0;
       const completionTokens = usage.completion_tokens || 0;
@@ -73,7 +76,7 @@ export class OpenAIProvider extends BaseProvider {
 
       return {
         success: true,
-        response: result.choices[0]?.message?.content || "",
+        response: content,
         metadata: { 
           model, 
           provider: 'openai',

@@ -1,5 +1,6 @@
 import { geminiProvider, GEMINI_MODELS } from "./providers/gemini.provider.js";
 import { openaiProvider } from "./providers/openai.provider.js";
+import { sanitizeProviderMessage } from "../utils/provider-utils.js";
 
 /**
  * Provider Manager
@@ -19,11 +20,11 @@ class ProviderManager {
   /**
    * Get provider instance by name
    * @param {string} name - Provider name
-   * @returns {BaseProvider}
+   * @returns {BaseProvider|null} - null se o provider não existe (sem fallback silencioso)
    */
   getProvider(name = null) {
     const providerName = name || this.defaultProvider;
-    return this.providers[providerName] || this.providers[this.defaultProvider];
+    return this.providers[providerName] || null;
   }
 
   /**
@@ -35,6 +36,9 @@ class ProviderManager {
     
     try {
       const selectedProvider = this.getProvider(provider);
+      if (!selectedProvider) {
+        return { success: false, error: "Provider não suportado", errorCategory: 'PROVIDER_UNAVAILABLE' };
+      }
       const result = await selectedProvider.generateResponse(question, contextChunks, options);
       
       // Automatic Fallback Logic
@@ -45,11 +49,13 @@ class ProviderManager {
           
           if (provider === 'openai') {
             console.log(`[ProviderManager] Fallback path. Checking Gemini...`);
-            const hasGeminiKey = options.userApiKey || process.env.GEMINI_API_KEY;
+            const hasGeminiKey = process.env.GEMINI_API_KEY;
             if (hasGeminiKey) {
-              return this.getProvider('gemini').generateResponse(question, contextChunks, { 
-                ...options, 
-                provider: 'gemini' 
+              // NÃO repassar userApiKey: a chave OpenAI do usuário é inválida para o Gemini
+              const { userApiKey: _drop, ...fallbackOptions } = options;
+              return this.getProvider('gemini').generateResponse(question, contextChunks, {
+                ...fallbackOptions,
+                provider: 'gemini',
               });
             }
           }
@@ -61,7 +67,7 @@ class ProviderManager {
       return result;
     } catch (error) {
       console.error(`[ProviderManager] Fatal error in ${provider}:`, error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: sanitizeProviderMessage(error.message) };
     }
   }
 
@@ -71,6 +77,10 @@ class ProviderManager {
   async *streamResponse(question, contextChunks = [], options = {}) {
     const { provider = this.defaultProvider } = options;
     const selectedProvider = this.getProvider(provider);
+    if (!selectedProvider) {
+      yield { done: true, error: "Provider não suportado", errorCategory: 'PROVIDER_UNAVAILABLE' };
+      return;
+    }
     
     // Note: Fallback for streaming is more complex and usually not recommended 
     // to avoid partial responses. We implement a straightforward call here.
@@ -81,7 +91,7 @@ class ProviderManager {
       }
     } catch (error) {
       console.error(`[ProviderManager] Streaming error in ${provider}:`, error.message);
-      yield { done: true, error: error.message };
+      yield { done: true, error: sanitizeProviderMessage(error.message) };
     }
   }
 
@@ -90,7 +100,12 @@ class ProviderManager {
    */
   async generateEmbedding(text, options = {}) {
     const provider = this.getProvider(options.provider);
-    return provider.generateEmbedding(text, options);
+    if (!provider) return { success: false, error: "Provider não suportado", errorCategory: 'PROVIDER_UNAVAILABLE' };
+    try {
+      return await provider.generateEmbedding(text, options);
+    } catch (error) {
+      return { success: false, error: sanitizeProviderMessage(error.message), errorCategory: 'UNKNOWN' };
+    }
   }
 
   /**
@@ -98,7 +113,12 @@ class ProviderManager {
    */
   async validateApiKey(apiKey, providerName = 'gemini') {
     const provider = this.getProvider(providerName);
-    return provider.validateApiKey(apiKey);
+    if (!provider) return false;
+    try {
+      return await provider.validateApiKey(apiKey);
+    } catch (error) {
+      return false;
+    }
   }
 
   /**
@@ -106,7 +126,12 @@ class ProviderManager {
    */
   async extractMainPoints(editalContent, options = {}) {
     const provider = this.getProvider(options.provider);
-    return provider.extractMainPoints(editalContent, options);
+    if (!provider) return { success: false, error: "Provider não suportado", errorCategory: 'PROVIDER_UNAVAILABLE' };
+    try {
+      return await provider.extractMainPoints(editalContent, options);
+    } catch (error) {
+      return { success: false, error: sanitizeProviderMessage(error.message), errorCategory: 'UNKNOWN' };
+    }
   }
 
   /**
@@ -114,7 +139,12 @@ class ProviderManager {
    */
   async generateEditalSummary(editalContent, options = {}) {
     const provider = this.getProvider(options.provider);
-    return provider.generateEditalSummary(editalContent, options);
+    if (!provider) return { success: false, error: "Provider não suportado", errorCategory: 'PROVIDER_UNAVAILABLE' };
+    try {
+      return await provider.generateEditalSummary(editalContent, options);
+    } catch (error) {
+      return { success: false, error: sanitizeProviderMessage(error.message), errorCategory: 'UNKNOWN' };
+    }
   }
 }
 
