@@ -10,7 +10,6 @@ import multer from "multer";
 import Edital from "../models/Edital.js";
 import { authMiddleware, isAdmin } from "../middleware/auth.middleware.js";
 import {
-  validatePDF,
   extractTextFromPDF,
   savePDFFile,
   cleanPDFText,
@@ -20,6 +19,7 @@ import { splitTextIntoChunks, getChunkingStats } from "../services/chunk.service
 import { generateEmbeddings } from "../services/embedding.service.js";
 import { storeEditalChunks } from "../services/rag.service.js";
 import geminiService from "../services/gemini.service.js";
+import providerManager from "../services/provider-manager.js";
 import User from "../models/User.js";
 
 const router = express.Router();
@@ -41,12 +41,25 @@ const upload = multer({
   },
 });
 
+// Middleware de upload com tratamento de erro do multer (senão o erro 500 vaza cru)
+function uploadMiddleware(req, res, next) {
+  upload.single("arquivo")(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, error: "Arquivo muito grande. Máximo de 10MB." });
+      }
+      return res.status(400).json({ success: false, error: err.message || "Falha no upload" });
+    }
+    next();
+  });
+}
+
 /**
  * @route   POST /api/edital/upload
  * @desc    Upload a new edital (PDF only) or submit manual content
  * @access  Admin Only
  */
-router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async (req, res) => {
+router.post("/upload", authMiddleware, isAdmin, uploadMiddleware, async (req, res) => {
   let editalId = null;
 
   try {
@@ -159,6 +172,7 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
 
     const edital = new Edital(editalData);
     await edital.save();
+    editalId = edital._id; // CORREÇÃO: antes ficava null e o armazenamento de chunks falhava
 
     // Fetch user's Gemini API key
     const user = await User.findById(req.user.id).select('+gemini_api_key');
@@ -261,7 +275,7 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
       try {
         const result = await providerManager.generateEditalSummary(cleanedText, { 
           userApiKey,
-          provider: preferredProvider
+          provider: 'gemini'
         });
         
         if (result.success) {
@@ -299,7 +313,7 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
     });
 
   } catch (error) {
-    console.error("[API] Upload error:", error);
+    console.error("[API] Upload error:", error.message);
 
     if (editalId) {
       console.log(`[API] Cleaning up: deleting edital ${editalId}`);
@@ -308,143 +322,7 @@ router.post("/upload", authMiddleware, isAdmin, upload.single("arquivo"), async 
 
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to process edital",
-    });
-  }
-});
-
-/**
- * @route   GET /api/editais
- * @desc    List all editais with full metadata
- * @access  Public
- */
-router.get("/", async (req, res) => {
-  try {
-    const { ano, search, limit = 20, offset = 0 } = req.query;
-
-    const result = await Edital.buscar({ ano, search, limit, offset });
-
-    const editaisWithStats = result.editais.map(edital => ({
-      id: edital._id.toString(),
-      titulo: edital.titulo,
-      descricao: edital.descricao,
-      ano: edital.ano,
-      arquivoUrl: edital.arquivo_url,
-      objetivo_principal: edital.objetivo_principal,
-      publico_alvo: edital.publico_alvo,
-      vagas: edital.vagas,
-      inscricoes_periodo: edital.inscricoes_periodo,
-      contatos: edital.contatos,
-      palavras_chave: edital.palavras_chave || [],
-      requisitos: typeof edital.requisitos === 'string'
-        ? edital.requisitos.split('\n').filter(r => r.trim())
-        : (edital.requisitos || []),
-      etapas: typeof edital.etapas === 'string'
-        ? edital.etapas.split('\n').filter(e => e.trim())
-        : (edital.etapas || []),
-      documentos_necessarios: typeof edital.documentos_necessarios === 'string'
-        ? edital.documentos_necessarios.split('\n').filter(d => d.trim())
-        : (edital.documentos_necessarios || []),
-      prazos_importantes: typeof edital.prazos_importantes === 'string'
-        ? edital.prazos_importantes.split('\n').filter(p => p.trim())
-        : (edital.prazos_importantes || []),
-      chunkCount: edital.getChunkCount(),
-      createdAt: edital.createdAt,
-      updatedAt: edital.updatedAt,
-    }));
-
-    res.json({
-      success: true,
-      data: editaisWithStats,
-      pagination: result.pagination,
-    });
-  } catch (error) {
-    console.error("[API] List editais error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-/**
- * Normalize edital data for consistent response
- * Converts strings back to arrays when needed
- */
-function normalizeEditalData(edital) {
-  const data = edital.toObject ? edital.toObject() : edital;
-  
-  return {
-    ...data,
-    // Converter strings de volta para arrays
-    requisitos: typeof data.requisitos === 'string' 
-      ? data.requisitos.split('\n').filter(r => r.trim()) 
-      : (data.requisitos || []),
-    etapas: typeof data.etapas === 'string'
-      ? data.etapas.split('\n').filter(e => e.trim())
-      : (data.etapas || []),
-    documentos_necessarios: typeof data.documentos_necessarios === 'string'
-      ? data.documentos_necessarios.split('\n').filter(d => d.trim())
-      : (data.documentos_necessarios || []),
-    prazos_importantes: typeof data.prazos_importantes === 'string'
-      ? data.prazos_importantes.split('\n').filter(p => p.trim())
-      : (data.prazos_importantes || []),
-    // Manter contatos como string ou converter objeto
-    contatos: typeof data.contatos === 'object' && data.contatos !== null
-      ? JSON.stringify(data.contatos)
-      : (data.contatos || '')
-  };
-}
-
-/**
- * @route   GET /api/edital/:id
- * @desc    Get a specific edital with statistics
- * @access  Public
- */
-router.get("/edital/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const edital = await Edital.findById(id);
-
-    if (!edital) {
-      return res.status(404).json({
-        success: false,
-        error: "Edital not found",
-      });
-    }
-
-    // Normalizar dados antes de retornar
-    const normalizedEdital = normalizeEditalData(edital);
-
-    res.json({
-      success: true,
-      data: {
-        id: normalizedEdital._id.toString(),
-        titulo: normalizedEdital.titulo,
-        descricao: normalizedEdital.descricao,
-        ano: normalizedEdital.ano,
-        arquivoUrl: normalizedEdital.arquivo_url,
-        objetivo_principal: normalizedEdital.objetivo_principal,
-        publico_alvo: normalizedEdital.publico_alvo,
-        vagas: normalizedEdital.vagas,
-        inscricoes_periodo: normalizedEdital.inscricoes_periodo,
-        contatos: normalizedEdital.contatos,
-        palavras_chave: normalizedEdital.palavras_chave,
-        requisitos: normalizedEdital.requisitos,
-        etapas: normalizedEdital.etapas,
-        documentos_necessarios: normalizedEdital.documentos_necessarios,
-        prazos_importantes: normalizedEdital.prazos_importantes,
-        createdAt: normalizedEdital.createdAt,
-        updatedAt: normalizedEdital.updatedAt,
-        ragStats: edital.getRAGStats(),
-      },
-    });
-  } catch (error) {
-    console.error("[API] Get edital error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
+      error: "Falha ao processar o edital. Tente novamente.",
     });
   }
 });
@@ -474,60 +352,10 @@ router.delete("/:id", authMiddleware, isAdmin, async (req, res) => {
       message: "Edital deleted successfully",
     });
   } catch (error) {
-    console.error("[API] Delete edital error:", error);
+    console.error("[API] Delete edital error:", error.message);
     res.status(500).json({
       success: false,
-      error: error.message,
-    });
-  }
-});
-
-/**
- * @route   GET /api/edital/:id/chunks
- * @desc    Get chunks for a specific edital
- * @access  Public
- */
-router.get("/edital/:id/chunks", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { limit = 10, offset = 0 } = req.query;
-
-    const edital = await Edital.findById(id);
-
-    if (!edital) {
-      return res.status(404).json({
-        success: false,
-        error: "Edital not found",
-      });
-    }
-
-    // Sort chunks by index and apply pagination
-    const sortedChunks = edital.chunks.sort((a, b) => a.chunk_index - b.chunk_index);
-    
-    const startIndex = parseInt(offset);
-    const endIndex = startIndex + parseInt(limit);
-    const paginatedChunks = sortedChunks.slice(startIndex, endIndex);
-
-    res.json({
-      success: true,
-      data: paginatedChunks.map((chunk) => ({
-        id: chunk._id.toString(),
-        index: chunk.chunk_index,
-        conteudo: chunk.conteudo,
-        wordCount: chunk.conteudo.split(/\s+/).length,
-        createdAt: chunk._id.getTimestamp(),
-      })),
-      pagination: {
-        total: sortedChunks.length,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-      },
-    });
-  } catch (error) {
-    console.error("[API] Get chunks error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
+      error: "Erro ao excluir edital",
     });
   }
 });
