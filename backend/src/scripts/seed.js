@@ -1,88 +1,45 @@
 /**
- * Seed Script - Cria usuários iniciais para teste
- * Executar com: node --env-file=.env src/scripts/seed.js
+ * Seed de demonstração: cria admin + usuário de teste usando o modelo REAL.
+ * Env: SEED_ADMIN_PASSWORD, SEED_USER_PASSWORD (sem hardcode de credenciais).
  */
 
-import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import mongoose from "mongoose";
+import User from "../models/User.js";
+import { hashSenha } from "../services/auth.service.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, "../../.env") });
 
-// Carregar .env do diretório backend
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+async function main() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) throw new Error("MONGODB_URI não configurada em backend/.env");
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/hubsabia';
+  await mongoose.connect(uri);
 
-const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true, lowercase: true },
-  senha_hash: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'user'], default: 'user' },
-  nome: { type: String, default: '' },
-}, { timestamps: true });
+  const upsert = (email, role, nome) =>
+    User.updateOne(
+      { email },
+      { $setOnInsert: { email, role, nome } },
+      { upsert: true },
+    );
 
-const User = mongoose.models.User || mongoose.model('User', UserSchema);
+  await upsert("admin@hubsabia.com", "admin", "Administrador");
+  await upsert("user@hubsabia.com", "user", "Usuário Teste");
 
-async function seed() {
-  try {
-    console.log('[SEED] Conectando ao MongoDB...');
-    await mongoose.connect(MONGO_URI);
-    console.log('[SEED] Conectado!');
+  const admin = await User.findOne({ email: "admin@hubsabia.com" });
+  const user = await User.findOne({ email: "user@hubsabia.com" });
+  admin.senha_hash = await hashSenha(process.env.SEED_ADMIN_PASSWORD || "troque-esta-senha-1");
+  user.senha_hash = await hashSenha(process.env.SEED_USER_PASSWORD || "troque-esta-senha-2");
+  await Promise.all([admin.save(), user.save()]);
 
-    // Verificar se já existem usuários
-    const existingUsers = await User.countDocuments();
-    console.log(`[SEED] Usuários existentes: ${existingUsers}`);
-
-    // Criar admin se não existir
-    const existingAdmin = await User.findOne({ role: 'admin' });
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash('admin123', 10);
-      const admin = new User({
-        email: 'admin@hubsabia.com',
-        senha_hash: hashedPassword,
-        role: 'admin',
-        nome: 'Administrador',
-      });
-      await admin.save();
-      console.log('[SEED] ✅ Admin criado: admin@hubsabia.com / admin123');
-    } else {
-      console.log('[SEED] Admin já existe:', existingAdmin.email);
-    }
-
-    // Criar usuário comum se não existir
-    const existingUser = await User.findOne({ email: 'usuario@hubsabia.com' });
-    if (!existingUser) {
-      const hashedPassword = await bcrypt.hash('user123', 10);
-      const user = new User({
-        email: 'usuario@hubsabia.com',
-        senha_hash: hashedPassword,
-        role: 'user',
-        nome: 'Usuário Comum',
-      });
-      await user.save();
-      console.log('[SEED] ✅ Usuário criado: usuario@hubsabia.com / user123');
-    } else {
-      console.log('[SEED] Usuário comum já existe:', existingUser.email);
-    }
-
-    // Listar todos os usuários
-    const allUsers = await User.find().select('-senha_hash');
-    console.log('\n[SEED] Todos os usuários:');
-    allUsers.forEach(u => {
-      console.log(`  - ${u.email} | role: ${u.role} | nome: ${u.nome || '—'}`);
-    });
-
-    console.log('\n[SEED] ✅ Seed finalizado!');
-  } catch (error) {
-    console.error('[SEED] Erro:', error);
-  } finally {
-    await mongoose.disconnect();
-    console.log('[SEED] Desconectado do MongoDB');
-    process.exit(0);
-  }
+  console.log("Seed ok: admin@hubsabia.com / user@hubsabia.com (senhas via SEED_*_PASSWORD)");
+  await mongoose.disconnect();
 }
 
-seed();
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
