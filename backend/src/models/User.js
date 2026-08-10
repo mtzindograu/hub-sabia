@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
   senha_hash: {
     type: String,
     required: [true, 'Senha é obrigatória'],
-    minlength: [6, 'Senha deve ter pelo menos 6 caracteres'],
+    select: false, // Nunca retornar por padrão (defesa em profundidade)
   },
   role: {
     type: String,
@@ -85,10 +85,16 @@ const userSchema = new mongoose.Schema({
 // Index para buscas por role (email já tem índice por causa do unique: true)
 userSchema.index({ role: 1 });
 
-// Virtual para senha (não persiste no banco)
+// Virtual para senha (não persiste no banco; hash feito no pre('save') async)
 userSchema.virtual('senha').set(function(senha) {
   this._senha = senha;
-  this.senha_hash = bcrypt.hashSync(senha, 10);
+});
+
+// Hash assíncrono (não bloqueia o event loop, ao contrário do hashSync)
+userSchema.pre('save', async function() {
+  if (this._senha) {
+    this.senha_hash = await bcrypt.hash(this._senha, 10);
+  }
 });
 
 // Método para validar senha
@@ -101,17 +107,6 @@ userSchema.methods.toJSON = function() {
   const user = this.toObject();
   delete user.senha_hash;
   delete user.__v;
-  return user;
-};
-
-// Método estático para buscar por email e senha
-userSchema.statics.autenticar = async function(email, senha) {
-  const user = await this.findOne({ email });
-  if (!user) return null;
-  
-  const senhaValida = await user.validarSenha(senha);
-  if (!senhaValida) return null;
-  
   return user;
 };
 

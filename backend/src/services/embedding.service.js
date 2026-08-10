@@ -20,7 +20,8 @@ env.useBrowserCache = false;
 // Model configuration
 const LOCAL_EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 const LOCAL_EMBEDDING_DIMENSION = 384;
-const GEMINI_EMBEDDING_MODEL = GEMINI_MODELS.EMBEDDING;
+// Lido no call-site: GEMINI_MODELS.EMBEDDING pode ser mutado pelo autoDiscoverModels
+const GEMINI_EMBEDDING_MODEL = () => GEMINI_MODELS.EMBEDDING;
 
 // Singleton pipeline instance
 let embeddingPipeline = null;
@@ -54,9 +55,9 @@ export async function generateEmbedding(text, options = {}) {
       useGemini = !!(process.env.GEMINI_API_KEY || userApiKey) 
     } = options;
 
-    const targetModel = model || (useGemini ? GEMINI_EMBEDDING_MODEL : LOCAL_EMBEDDING_MODEL);
+    const targetModel = model || (useGemini ? GEMINI_EMBEDDING_MODEL() : LOCAL_EMBEDDING_MODEL);
 
-    if (targetModel === GEMINI_EMBEDDING_MODEL) {
+    if (targetModel === GEMINI_EMBEDDING_MODEL()) {
       console.log(`[EMBEDDING] Using Google Gemini (${GEMINI_EMBEDDING_MODEL})`);
       const result = await geminiService.generateEmbedding(text, { userApiKey });
       if (result.success) return result;
@@ -139,6 +140,12 @@ export async function generateEmbeddings(texts, options = {}) {
           failureCount++;
         }
       });
+    }
+
+    // Validar homogeneidade de dimensão (embedding 384 vs 768 em lote quebra o cosseno)
+    const dims = new Set(results.filter((r) => r.success).map((r) => r.dimension));
+    if (dims.size > 1) {
+      console.warn(`[EMBEDDINGS] Dimensões mistas detectadas: ${[...dims].join(', ')}`);
     }
 
     return {

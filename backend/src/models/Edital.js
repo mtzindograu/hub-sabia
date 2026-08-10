@@ -110,11 +110,12 @@ editalSchema.index({ titulo: 'text', descricao: 'text' });
 editalSchema.index({ createdAt: -1 });
 
 // Índice para busca textual nos chunks
-editalSchema.index({ 'chunks.conteudo': 'text' });
+// NOTA: MongoDB permite apenas UM índice text por coleção (já existe titulo/descricao).
+// Busca nos chunks usa $regex; nenhum índice text adicional é criado.
 
 // Índice para busca vetorial nos chunks (usando 2dsphere como workaround)
 // Nota: MongoDB Atlas tem suporte nativo para vector search
-editalSchema.index({ 'chunks.embedding': 1 });
+// REMOVIDO: índice multikey em embedding (inútil para similaridade vetorial)
 
 // Método para contar chunks
 editalSchema.methods.getChunkCount = function() {
@@ -137,6 +138,12 @@ editalSchema.methods.getRAGStats = function() {
   };
 };
 
+// Threshold único de similaridade (alinhado ao RAG_CONFIG do rag.service)
+const SIMILARITY_THRESHOLD = 0.2;
+
+// Escapa caracteres especiais de regex em busca textual
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // Método estático para busca textual
 editalSchema.statics.buscar = async function({ ano, search, limit = 20, offset = 0 }) {
   const query = {};
@@ -146,9 +153,10 @@ editalSchema.statics.buscar = async function({ ano, search, limit = 20, offset =
   }
   
   if (search) {
+    const safeSearch = escapeRegex(String(search));
     query.$or = [
-      { titulo: { $regex: search, $options: 'i' } },
-      { descricao: { $regex: search, $options: 'i' } },
+      { titulo: { $regex: safeSearch, $options: 'i' } },
+      { descricao: { $regex: safeSearch, $options: 'i' } },
     ];
   }
   
@@ -185,9 +193,8 @@ editalSchema.statics.buscarChunksPorSimilaridade = async function(editalId, quer
   }));
   
   // Filtrar por threshold e ordenar
-  const threshold = 0.3;
   const resultados = chunksComSimilaridade
-    .filter(c => c.similarity >= threshold)
+    .filter(c => c.similarity >= SIMILARITY_THRESHOLD)
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, topK);
   
@@ -214,6 +221,9 @@ function cosineSimilarity(vecA, vecB) {
 
 // Método estático para busca global em todos os editais
 editalSchema.statics.buscarGlobal = async function(queryEmbedding, topK = 5) {
+  const dimension = queryEmbedding?.length || 0;
+  if (!dimension) return [];
+
   const editais = await this.find({ 'chunks.embedding': { $exists: true, $ne: null } });
 
   const todosChunks = [];
@@ -221,8 +231,10 @@ editalSchema.statics.buscarGlobal = async function(queryEmbedding, topK = 5) {
   editais.forEach(edital => {
     const chunksComEmbedding = edital.chunks.filter(c => c.embedding && c.embedding.length > 0);
     chunksComEmbedding.forEach(chunk => {
+      // Ignora chunks com dimensão diferente da query (evita cosseno 384x768 = 0)
+      if (chunk.embedding.length !== dimension) return;
       const similarity = cosineSimilarity(queryEmbedding, chunk.embedding);
-      if (similarity >= 0.2) { // Threshold reduzido para mais recall
+      if (similarity >= SIMILARITY_THRESHOLD) {
         todosChunks.push({
           ...chunk.toObject(),
           edital_id: edital._id,
@@ -242,7 +254,7 @@ editalSchema.statics.buscarGlobal = async function(queryEmbedding, topK = 5) {
 // Método para busca textual nos chunks (fallback)
 editalSchema.statics.buscarChunksPorTexto = async function(searchText, editalId = null, limit = 10) {
   const query = {
-    'chunks.conteudo': { $regex: searchText, $options: 'i' },
+    'chunks.conteudo': { $regex: escapeRegex(String(searchText)), $options: 'i' },
   };
 
   if (editalId) {

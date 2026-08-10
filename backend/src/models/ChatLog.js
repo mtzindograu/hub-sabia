@@ -66,6 +66,7 @@ chatLogSchema.index({ edital_id: 1 });
 chatLogSchema.index({ usuario_id: 1 });
 chatLogSchema.index({ status: 1 });
 chatLogSchema.index({ feedback: 1 });
+chatLogSchema.index({ conversation_id: 1, createdAt: 1 });
 chatLogSchema.index({ createdAt: -1 });
 
 const ChatLog = mongoose.models.ChatLog || mongoose.model('ChatLog', chatLogSchema);
