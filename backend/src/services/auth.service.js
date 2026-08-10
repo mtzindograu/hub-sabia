@@ -7,21 +7,18 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hubsabia-secret-key-change-in-production';
 const JWT_EXPIRATION = '24h';
 
-// Domínios de email IF aceitos
-const IF_EMAIL_DOMAINS = ['ifpr.edu.br', 'ifsp.edu.br', 'ifsc.edu.br', 'ifrs.edu.br', 'ifba.edu.br'];
-
 /**
- * Verifica se email é de instituição IF
- * @param {string} email - Email para verificar
- * @returns {boolean} True se for email IF
+ * Secret JWT — fail-fast: NUNCA usar fallback hardcoded (permite forjar tokens).
+ * @returns {string}
  */
-export function isValidIFEmail(email) {
-  if (!email) return false;
-  const domain = email.split('@')[1]?.toLowerCase();
-  return IF_EMAIL_DOMAINS.includes(domain);
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret === 'hubsabia-secret-key-change-in-production' || secret === 'your-super-secret-jwt-key-change-in-production') {
+    throw new Error('JWT_SECRET não configurado. Defina em backend/.env (gere com: openssl rand -base64 32)');
+  }
+  return secret;
 }
 
 /**
@@ -56,7 +53,7 @@ export function generateToken(user) {
     role: user.role
   };
 
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: JWT_EXPIRATION
   });
 }
@@ -68,7 +65,7 @@ export function generateToken(user) {
  */
 export function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, getJwtSecret());
   } catch (error) {
     return null;
   }
@@ -81,24 +78,33 @@ export function verifyToken(token) {
  */
 export async function registerUser(userData) {
   const { email, senha, role = 'user', nome } = userData;
+  const normalizedEmail = email.trim().toLowerCase();
 
-  // Verificar se email já existe
-  const existingUser = await User.findOne({ email });
+  // Verificar se email já existe (case-insensitive)
+  const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
     throw new Error('Email já cadastrado');
   }
 
   // Criar usuário usando o virtual setter do schema
   const user = new User({
-    email,
+    email: normalizedEmail,
     role,
     nome
   });
   
-  // Setar senha (o virtual setter fará o hash)
+  // Setar senha (o virtual setter + pre('save') fará o hash)
   user.senha = senha;
 
-  await user.save();
+  try {
+    await user.save();
+  } catch (error) {
+    // Índice unique: corrida de registro duplicado
+    if (error.code === 11000) {
+      throw new Error('Email já cadastrado');
+    }
+    throw error;
+  }
 
   // Retornar usuário sem senha
   return {
@@ -113,6 +119,7 @@ export async function registerUser(userData) {
     preferred_provider: user.preferred_provider,
     currentPlan: user.currentPlan,
     remainingCredits: user.remainingCredits,
+    lastCreditReset: user.lastCreditReset,
     usingOwnApiKey: user.usingOwnApiKey,
     planAcknowledged: user.planAcknowledged || false,
     createdAt: user.createdAt,
@@ -126,9 +133,8 @@ export async function registerUser(userData) {
  * @returns {Promise<object>} - Usuário e token
  */
 export async function login(email, senha) {
-  // Buscar usuário por email
-  // Selecionar chaves para os flags
-  const user = await User.findOne({ email }).select('+gemini_api_key +openai_api_key +claude_api_key');
+  // Buscar usuário por email (normalizado: o schema lowercases no save, o login deve espelhar)
+  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+gemini_api_key +openai_api_key +claude_api_key');
 
   if (!user) {
     throw new Error('Email ou senha inválidos');
@@ -144,7 +150,7 @@ export async function login(email, senha) {
   // Gerar token
   const token = generateToken(user);
 
-  // Retornar usuário (sem senha) e token
+  // Retornar usuário (sem senha) e token — contrato completo (igual registerUser/getUserById)
   return {
     user: {
       id: user._id.toString(),
@@ -156,6 +162,11 @@ export async function login(email, senha) {
       has_openai_key: !!user.openai_api_key,
       has_claude_key: !!user.claude_api_key,
       preferred_provider: user.preferred_provider,
+      currentPlan: user.currentPlan,
+      remainingCredits: user.remainingCredits,
+      lastCreditReset: user.lastCreditReset,
+      usingOwnApiKey: user.usingOwnApiKey,
+      planAcknowledged: user.planAcknowledged || false,
     },
     token
   };
@@ -186,36 +197,7 @@ export async function getUserById(userId) {
     preferred_provider: user.preferred_provider,
     currentPlan: user.currentPlan,
     remainingCredits: user.remainingCredits,
-    usingOwnApiKey: user.usingOwnApiKey,
-    planAcknowledged: user.planAcknowledged || false,
-    createdAt: user.createdAt,
-  };
-}
-
-/**
- * Buscar usuário por email
- * @param {string} email - Email do usuário
- * @returns {Promise<object|null>} - Usuário ou null
- */
-export async function getUserByEmail(email) {
-  const user = await User.findOne({ email }).select('+gemini_api_key +openai_api_key +claude_api_key');
-
-  if (!user) {
-    return null;
-  }
-
-  return {
-    id: user._id.toString(),
-    _id: user._id.toString(),
-    email: user.email,
-    role: user.role,
-    nome: user.nome,
-    has_gemini_key: !!user.gemini_api_key,
-    has_openai_key: !!user.openai_api_key,
-    has_claude_key: !!user.claude_api_key,
-    preferred_provider: user.preferred_provider,
-    currentPlan: user.currentPlan,
-    remainingCredits: user.remainingCredits,
+    lastCreditReset: user.lastCreditReset,
     usingOwnApiKey: user.usingOwnApiKey,
     planAcknowledged: user.planAcknowledged || false,
     createdAt: user.createdAt,
@@ -238,6 +220,9 @@ export async function updateUserProfile(userId, updateData) {
   }
 
   if (senha !== undefined) {
+    if (!senha || senha.length < 6) {
+      throw new Error('Senha deve ter pelo menos 6 caracteres');
+    }
     updateFields.senha_hash = await hashSenha(senha);
   }
 
@@ -332,6 +317,14 @@ export async function updateProviderConfig(userId, provider, apiKey) {
     throw new Error('Provider não suportado');
   }
 
+  // Ativa (ou desativa) o uso de chave própria — o credits.service usa este flag
+  // para liberar o usuário do limite diário.
+  if (apiKey) {
+    updateField.usingOwnApiKey = { active: true, provider, configuredAt: new Date() };
+  } else {
+    updateField.usingOwnApiKey = { active: false, provider: null, configuredAt: null };
+  }
+
   const updatedUser = await User.findByIdAndUpdate(
     userId,
     updateField,
@@ -363,14 +356,4 @@ export async function updatePreferredProvider(userId, provider) {
   }
 
   return true;
-}
-
-/**
- * Atualizar chave de API do Gemini para o usuário (Legado)
- * @param {string} userId - ID do usuário
- * @param {string|null} apiKey - Chave de API do Gemini
- * @returns {Promise<boolean>} - true se atualizado
- */
-export async function updateGeminiKey(userId, apiKey) {
-  return updateProviderConfig(userId, 'gemini', apiKey);
 }
