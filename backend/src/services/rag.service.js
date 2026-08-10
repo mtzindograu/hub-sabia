@@ -8,7 +8,7 @@
 
 import Edital from "../models/Edital.js";
 import { generateQueryEmbedding } from "./embedding.service.js";
-import providerManager, { GEMINI_MODELS } from "./provider-manager.js";
+import providerManager from "./provider-manager.js";
 import { generateSearchQueries, calculateTextRelevance } from "./query-expansion.service.js";
 
 // RAG Configuration - Improved for better recall
@@ -16,8 +16,6 @@ const RAG_CONFIG = {
   topK: 10, // Aumentado de 5 para 10 para mais contexto
   similarityThreshold: 0.2, // Reduzido de 0.3 para 0.2 para mais recall
   maxContextLength: 12000, // Aumentado de 8000 para mais contexto
-  minChunksForAnswer: 1,
-  keywordFallbackThreshold: 0.15, // Se similaridade vetorial < 0.15, usa fallback
 };
 
 /**
@@ -59,6 +57,7 @@ export async function processQuestion(question, editalId = null, options = {}) {
         metadata: {
           processingTime: Date.now() - startTime,
           chunksRetrieved: 0,
+          usedAI: false, // Nenhuma chamada de IA foi feita — não debitar crédito
         },
       };
     }
@@ -74,7 +73,10 @@ export async function processQuestion(question, editalId = null, options = {}) {
     const responseResult = await providerManager.generateResponse(question, filteredChunks, { ...options, userApiKey });
 
     if (!responseResult.success) {
-      throw new Error(`AI Provider failed: ${responseResult.error}`);
+      // Nunca propagar mensagem crua do provider (pode conter API key)
+      const err = new Error("Falha ao gerar resposta com o provedor de IA");
+      err.errorCategory = responseResult.errorCategory || 'UNKNOWN';
+      throw err;
     }
 
     return {
@@ -89,18 +91,20 @@ export async function processQuestion(question, editalId = null, options = {}) {
         provider: responseResult.metadata?.provider || "unknown",
         model: responseResult.metadata?.model,
         usage: responseResult.metadata?.usage,
+        usedAI: true,
       },
     };
   } catch (error) {
-    console.error("[RAG] Pipeline error:", error);
+    console.error("[RAG] Pipeline error:", error.message);
     return {
       success: false,
-      error: error.message,
-      response: "Ops! Algo deu errado ao processar sua pergunta 😅 Tenta de novo em instantes!",
+      error: error.errorCategory === 'UNKNOWN' ? error.message : "Falha ao processar a pergunta",
       sources: [],
       metadata: {
         processingTime: Date.now() - startTime,
         error: error.message,
+        errorCategory: error.errorCategory || 'UNKNOWN',
+        usedAI: false,
       },
     };
   }
@@ -319,6 +323,23 @@ function getRelevanceLabel(similarity) {
 }
 
 /**
+ * Recupera apenas o contexto (chunks relevantes) sem gerar resposta.
+ * Usado pela rota de streaming para montar o contexto do provider.
+ * @param {string} question - Pergunta do usuário
+ * @param {string|null} editalId - Edital específico (opcional)
+ * @param {Object} options - Opções (userApiKey, provider)
+ * @returns {Promise<{chunks: Array<Object>, keywords: Array<string>}>}
+ */
+export async function retrieveContext(question, editalId = null, options = {}) {
+  const expandedQueries = generateSearchQueries(question);
+  let chunks = await retrieveRelevantChunksHybrid(question, expandedQueries, editalId, options);
+  if (chunks.length === 0) {
+    chunks = await retrieveByKeywords(expandedQueries.keywords, editalId);
+  }
+  return { chunks, keywords: expandedQueries.keywords };
+}
+
+/**
  * Process and store an edital document
  * @param {string} editalId - Edital ID
  * @param {Array<Object>} chunks - Text chunks
@@ -414,6 +435,7 @@ export async function getEditalRAGStats(editalId) {
 
 export default {
   processQuestion,
+  retrieveContext,
   storeEditalChunks,
   deleteEditalChunks,
   getEditalRAGStats,
