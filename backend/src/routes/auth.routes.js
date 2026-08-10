@@ -10,6 +10,7 @@
  */
 
 import { Router } from 'express';
+import User from '../models/User.js';
 import { registerUser, login, getUserById, updateUserProfile, listAllUsers, deleteUser, updateProviderConfig, updatePreferredProvider } from '../services/auth.service.js';
 import { authMiddleware, isAdmin } from '../middleware/auth.middleware.js';
 import providerManager from '../services/provider-manager.js';
@@ -152,7 +153,7 @@ router.post('/provider-config', authMiddleware, async (req, res) => {
   try {
     const { provider, apiKey } = req.body;
 
-    if (!provider || !['gemini', 'openai', 'claude'].includes(provider)) {
+    if (!provider || !['gemini', 'openai'].includes(provider)) {
       return res.status(400).json({ success: false, error: 'Provider inválido ou não suportado' });
     }
 
@@ -185,7 +186,7 @@ router.post('/provider-preference', authMiddleware, async (req, res) => {
   try {
     const { provider } = req.body;
 
-    if (!provider || !['gemini', 'openai', 'claude'].includes(provider)) {
+    if (!provider || !['gemini', 'openai'].includes(provider)) {
       return res.status(400).json({
         success: false,
         error: 'Provider inválido ou não suportado'
@@ -199,23 +200,17 @@ router.post('/provider-preference', authMiddleware, async (req, res) => {
 });
 
 /**
- * @route   POST /api/auth/gemini-key (LEGADO)
+ * @route   POST /api/auth/acknowledge-plan
+ * @desc    Marcar o plano do usuário como aceito
+ * @access  Privado
  */
-router.post('/gemini-key', authMiddleware, async (req, res) => {
-  req.body.provider = 'gemini';
-  req.body.apiKey = req.body.apiKey || req.body.gemini_api_key;
-  
+router.post('/acknowledge-plan', authMiddleware, async (req, res) => {
   try {
-    const { apiKey, provider } = req.body;
-    if (!apiKey) {
-      await updateProviderConfig(req.user.id, provider, null);
-      return res.json({ success: true, message: 'Chave do Gemini removida' });
-    }
-    const isValid = await providerManager.validateApiKey(apiKey, provider);
-    if (!isValid) return res.status(400).json({ success: false, error: 'Chave inválida' });
-    await updateProviderConfig(req.user.id, provider, apiKey);
-    res.json({ success: true, message: 'Chave do Gemini atualizada' });
+    console.log('[DEBUG] Acknowledging plan for user:', req.user.id);
+    await User.updateOne({ _id: req.user.id }, { planAcknowledged: true });
+    res.json({ success: true, message: 'Plano aceito com sucesso' });
   } catch (error) {
+    console.error('[DEBUG] Error acknowledging plan for user:', req.user.id, error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

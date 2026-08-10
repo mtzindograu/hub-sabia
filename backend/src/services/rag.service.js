@@ -69,6 +69,7 @@ export async function processQuestion(question, editalId = null, options = {}) {
     // Step 5: Generate response using Selected AI Provider
     console.log("[RAG] Step 5: Generating AI response...");
     
+    console.log(`[RAG DEBUG] Received Options: provider=${options.provider}, userApiKey=${!!options.userApiKey}`);
     console.log(`[RAG] Using Provider: ${options.provider || 'default'}...`);
     const responseResult = await providerManager.generateResponse(question, filteredChunks, { ...options, userApiKey });
 

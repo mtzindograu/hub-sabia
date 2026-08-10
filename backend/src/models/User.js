@@ -30,6 +30,34 @@ const userSchema = new mongoose.Schema({
     trim: true,
     default: '',
   },
+  currentPlan: {
+    type: Object,
+    default: {
+      id: 'free_hubsabia',
+      name: 'Plano Gratuito HubSabia',
+      type: 'free'
+    }
+  },
+  remainingCredits: {
+    type: Number,
+    default: 20
+  },
+  lastCreditReset: {
+    type: Date,
+    default: Date.now
+  },
+  usingOwnApiKey: {
+    type: Object,
+    default: {
+      active: false,
+      provider: null,
+      configuredAt: null
+    }
+  },
+  planAcknowledged: {
+    type: Boolean,
+    default: false
+  },
   gemini_api_key: {
     type: String,
     default: null,

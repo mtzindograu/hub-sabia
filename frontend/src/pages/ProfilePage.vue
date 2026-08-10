@@ -1,9 +1,8 @@
 <template>
   <DashboardLayout :page-title="isAdmin ? 'Meu Perfil' : 'Meu Perfil'">
     <div class="profile-page">
-      <!-- Card Principal -->
       <div class="profile-card">
-        <!-- Banner/Header -->
+        <!-- Banner -->
         <div class="profile-banner">
           <div class="avatar-wrapper">
             <div class="avatar" :class="{ 'is-admin': isAdmin }">
@@ -13,7 +12,7 @@
           </div>
         </div>
 
-        <!-- Informações -->
+        <!-- Body -->
         <div class="profile-body">
           <div class="profile-header-info">
             <h1 class="profile-name">{{ userName }}</h1>
@@ -26,7 +25,7 @@
             </span>
           </div>
 
-          <!-- Detalhes Grid -->
+          <!-- Details -->
           <div class="details-grid">
             <div class="detail-card">
               <div class="detail-icon">
@@ -53,7 +52,7 @@
                 <span class="detail-value email-value">{{ userEmail }}</span>
               </div>
             </div>
-
+            
             <div class="detail-card">
               <div class="detail-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -81,164 +80,131 @@
             </div>
           </div>
 
-          <!-- Integração IA -->
+          <!-- Plano Atual -->
           <div class="profile-section">
             <h3 class="section-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
-              Configuração de IA
+              Plano Atual
             </h3>
 
-            <p class="section-description">
-              O HUB-SABIÁ suporta múltiplos modelos de IA. Configure suas chaves para habilitar o chat.
-            </p>
+            <div class="plan-card" :class="{ 'own-key': currentUser?.usingOwnApiKey?.active }">
+              <div class="plan-header">
+                <div class="plan-info">
+                  <span class="plan-badge">
+                    {{ currentUser?.usingOwnApiKey?.active ? '🔑' : '🟢' }} 
+                    {{ currentUser?.currentPlan?.name || 'Plano Gratuito HubSabia' }}
+                  </span>
+                  <p class="plan-ia">IA utilizada: Gemini 2.5 Flash</p>
+                </div>
+                <router-link to="/perfil" class="btn-toggle">
+                  {{ currentUser?.usingOwnApiKey?.active ? 'Alterar' : 'Configurar minha chave' }}
+                </router-link>
+              </div>
 
-            <div class="provider-preference-card">
-              <div class="input-group">
-                <label for="preferred-provider">Provedor Preferencial</label>
-                <select 
-                  id="preferred-provider" 
-                  v-model="preferredProvider" 
-                  class="form-select"
-                  @change="handleSavePreference"
-                  :disabled="loading"
-                >
-                  <option value="gemini">Google Gemini (Padrão)</option>
-                  <option value="openai">OpenAI (GPT-4o/3.5)</option>
-                  <option value="claude">Anthropic Claude</option>
-                </select>
+              <div v-if="!currentUser?.usingOwnApiKey?.active" class="credits-progress">
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: creditPercentage + '%' }"></div>
+                </div>
+                <div class="credits-info">
+                  <span>{{ currentUser?.remainingCredits || 0 }} / 20 créditos</span>
+                  <span>Renovação: {{ formattedResetTime }}</span>
+                </div>
+              </div>
+              <div v-else class="own-key-status">
+                <p>Status: Uso ilimitado conforme sua própria conta.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Providers -->
+          <div class="providers-list">
+            <!-- Gemini -->
+            <div class="provider-item" :class="{ 'is-active': hasGeminiKey }">
+              <div class="provider-header">
+                <div class="provider-info">
+                  <span class="provider-name">Google Gemini</span>
+                  <span class="provider-badge" :class="hasGeminiKey ? 'active' : 'inactive'">
+                    {{ hasGeminiKey ? 'Conectado' : 'Não configurado' }}
+                  </span>
+                </div>
+                <button @click="toggleProvider('gemini')" class="btn-toggle">
+                  {{ activeProviderForm === 'gemini' ? 'Fechar' : (hasGeminiKey ? 'Alterar' : 'Configurar') }}
+                </button>
+              </div>
+
+              <div v-if="activeProviderForm === 'gemini'" class="provider-form">
+                <div class="input-group">
+                  <label>Chave API Gemini</label>
+                  <div class="password-input">
+                    <input 
+                      :type="showKeys.gemini ? 'text' : 'password'" 
+                      v-model="providerKeys.gemini" 
+                      placeholder="AIza..."
+                    />
+                    <button @click="showKeys.gemini = !showKeys.gemini" class="btn-show-hide" type="button">
+                      <svg v-if="showKeys.gemini" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="provider-actions">
+                  <button class="btn-save" @click="handleSaveKey('gemini')" :disabled="loading || !providerKeys.gemini">Salvar</button>
+                  <button v-if="hasGeminiKey" class="btn-remove" @click="handleRemoveKey('gemini')" :disabled="loading">Remover</button>
+                </div>
               </div>
             </div>
 
-            <div class="providers-list">
-              <!-- Gemini -->
-              <div class="provider-item" :class="{ 'is-active': hasGeminiKey }">
-                <div class="provider-header">
-                  <div class="provider-info">
-                    <span class="provider-name">Google Gemini</span>
-                    <span class="provider-badge" :class="hasGeminiKey ? 'active' : 'inactive'">
-                      {{ hasGeminiKey ? 'Conectado' : 'Não configurado' }}
-                    </span>
-                  </div>
-                  <button @click="toggleProvider('gemini')" class="btn-toggle">
-                    {{ activeProviderForm === 'gemini' ? 'Fechar' : (hasGeminiKey ? 'Alterar' : 'Configurar') }}
-                  </button>
+            <!-- OpenAI -->
+            <div class="provider-item" :class="{ 'is-active': hasOpenAIKey }">
+              <div class="provider-header">
+                <div class="provider-info">
+                  <span class="provider-name">OpenAI (GPT)</span>
+                  <span class="provider-badge" :class="hasOpenAIKey ? 'active' : 'inactive'">
+                    {{ hasOpenAIKey ? 'Conectado' : 'Não configurado' }}
+                  </span>
                 </div>
-
-                <div v-if="activeProviderForm === 'gemini'" class="provider-form">
-                  <div class="input-group">
-                    <label>Chave API Gemini</label>
-                    <div class="password-input">
-                      <input 
-                        :type="showKeys.gemini ? 'text' : 'password'" 
-                        v-model="providerKeys.gemini" 
-                        placeholder="AIza..."
-                      />
-                      <button @click="showKeys.gemini = !showKeys.gemini" class="btn-show-hide" type="button">
-                        <svg v-if="showKeys.gemini" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                          <line x1="1" y1="1" x2="23" y2="23"></line>
-                        </svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="provider-actions">
-                    <button class="btn-save" @click="handleSaveKey('gemini')" :disabled="loading || !providerKeys.gemini">Salvar</button>
-                    <button v-if="hasGeminiKey" class="btn-remove" @click="handleRemoveKey('gemini')" :disabled="loading">Remover</button>
-                  </div>
-                </div>
+                <button @click="toggleProvider('openai')" class="btn-toggle">
+                  {{ activeProviderForm === 'openai' ? 'Fechar' : (hasOpenAIKey ? 'Alterar' : 'Configurar') }}
+                </button>
               </div>
 
-              <!-- OpenAI -->
-              <div class="provider-item" :class="{ 'is-active': hasOpenAIKey }">
-                <div class="provider-header">
-                  <div class="provider-info">
-                    <span class="provider-name">OpenAI (GPT)</span>
-                    <span class="provider-badge" :class="hasOpenAIKey ? 'active' : 'inactive'">
-                      {{ hasOpenAIKey ? 'Conectado' : 'Não configurado' }}
-                    </span>
-                  </div>
-                  <button @click="toggleProvider('openai')" class="btn-toggle">
-                    {{ activeProviderForm === 'openai' ? 'Fechar' : (hasOpenAIKey ? 'Alterar' : 'Configurar') }}
-                  </button>
-                </div>
-
-                <div v-if="activeProviderForm === 'openai'" class="provider-form">
-                  <div class="input-group">
-                    <label>Chave API OpenAI</label>
-                    <div class="password-input">
-                      <input 
-                        :type="showKeys.openai ? 'text' : 'password'" 
-                        v-model="providerKeys.openai" 
-                        placeholder="sk-..."
-                      />
-                      <button @click="showKeys.openai = !showKeys.openai" class="btn-show-hide" type="button">
-                        <svg v-if="showKeys.openai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                          <line x1="1" y1="1" x2="23" y2="23"></line>
-                        </svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="provider-actions">
-                    <button class="btn-save" @click="handleSaveKey('openai')" :disabled="loading || !providerKeys.openai">Salvar</button>
-                    <button v-if="hasOpenAIKey" class="btn-remove" @click="handleRemoveKey('openai')" :disabled="loading">Remover</button>
+              <div v-if="activeProviderForm === 'openai'" class="provider-form">
+                <div class="input-group">
+                  <label>Chave API OpenAI</label>
+                  <div class="password-input">
+                    <input 
+                      :type="showKeys.openai ? 'text' : 'password'" 
+                      v-model="providerKeys.openai" 
+                      placeholder="sk-..."
+                    />
+                    <button @click="showKeys.openai = !showKeys.openai" class="btn-show-hide" type="button">
+                      <svg v-if="showKeys.openai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    </button>
                   </div>
                 </div>
-              </div>
-
-              <!-- Claude -->
-              <div class="provider-item" :class="{ 'is-active': hasClaudeKey }">
-                <div class="provider-header">
-                  <div class="provider-info">
-                    <span class="provider-name">Anthropic Claude</span>
-                    <span class="provider-badge" :class="hasClaudeKey ? 'active' : 'inactive'">
-                      {{ hasClaudeKey ? 'Conectado' : 'Não configurado' }}
-                    </span>
-                  </div>
-                  <button @click="toggleProvider('claude')" class="btn-toggle">
-                    {{ activeProviderForm === 'claude' ? 'Fechar' : (hasClaudeKey ? 'Alterar' : 'Configurar') }}
-                  </button>
-                </div>
-
-                <div v-if="activeProviderForm === 'claude'" class="provider-form">
-                  <div class="input-group">
-                    <label>Chave API Claude</label>
-                    <div class="password-input">
-                      <input 
-                        :type="showKeys.claude ? 'text' : 'password'" 
-                        v-model="providerKeys.claude" 
-                        placeholder="sk-ant-..."
-                      />
-                      <button @click="showKeys.claude = !showKeys.claude" class="btn-show-hide" type="button">
-                        <svg v-if="showKeys.claude" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                          <line x1="1" y1="1" x2="23" y2="23"></line>
-                        </svg>
-                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="provider-actions">
-                    <button class="btn-save" @click="handleSaveKey('claude')" :disabled="loading || !providerKeys.claude">Salvar</button>
-                    <button v-if="hasClaudeKey" class="btn-remove" @click="handleRemoveKey('claude')" :disabled="loading">Remover</button>
-                  </div>
+                <div class="provider-actions">
+                  <button class="btn-save" @click="handleSaveKey('openai')" :disabled="loading || !providerKeys.openai">Salvar</button>
+                  <button v-if="hasOpenAIKey" class="btn-remove" @click="handleRemoveKey('openai')" :disabled="loading">Remover</button>
                 </div>
               </div>
             </div>
           </div>
+
           <!-- Ações -->
           <div class="profile-actions">
             <button class="btn-action btn-edit" @click="handleEdit">
@@ -276,9 +242,6 @@
                   <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
                 <span>Gerenciar Usuários</span>
-                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
               </router-link>
               <router-link to="/admin/editais" class="access-link">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -286,9 +249,6 @@
                   <polyline points="14 2 14 8 20 8"/>
                 </svg>
                 <span>Gerenciar Editais</span>
-                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
               </router-link>
               <router-link to="/admin/dashboard" class="access-link">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -298,9 +258,6 @@
                   <rect x="3" y="14" width="7" height="7"/>
                 </svg>
                 <span>Dashboard Admin</span>
-                <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
               </router-link>
             </div>
           </div>
@@ -326,13 +283,11 @@ const preferredProvider = ref('gemini')
 const activeProviderForm = ref(null)
 const providerKeys = ref({
   gemini: '',
-  openai: '',
-  claude: ''
+  openai: ''
 })
 const showKeys = ref({
   gemini: false,
-  openai: false,
-  claude: false
+  openai: false
 })
 
 const userName = computed(() => currentUser.value?.nome || currentUser.value?.email?.split('@')[0] || 'Usuário')
@@ -344,28 +299,39 @@ const userEmail = computed(() => currentUser.value?.email || '')
 const userRole = computed(() => currentUser.value?.role || 'user')
 const userRoleLabel = computed(() => userRole.value === 'admin' ? 'Administrador' : 'Usuário')
 const isAdmin = computed(() => userRole.value === 'admin')
+const memberSince = computed(() => currentUser.value?.createdAt ? new Date(currentUser.value.createdAt).toLocaleDateString('pt-BR') : '---')
 
 // Flags for keys
 const hasGeminiKey = computed(() => !!currentUser.value?.has_gemini_key)
 const hasOpenAIKey = computed(() => !!currentUser.value?.has_openai_key)
-const hasClaudeKey = computed(() => !!currentUser.value?.has_claude_key)
 
-const memberSince = computed(() => {
-  if (!currentUser.value?.createdAt) return 'Data indisponível'
-  const date = new Date(currentUser.value.createdAt)
-  return date.toLocaleDateString('pt-BR', {
-    month: 'long',
-    year: 'numeric'
-  })
+const creditPercentage = computed(() => {
+  const credits = currentUser.value?.remainingCredits || 0;
+  return Math.min(Math.max((credits / 20) * 100, 0), 100);
+})
+
+const formattedResetTime = computed(() => {
+  if (!currentUser.value?.lastCreditReset) return 'Calculando...';
+  // Lógica simplificada: adicionar 24h ao lastCreditReset e formatar
+  const resetDate = new Date(currentUser.value.lastCreditReset);
+  resetDate.setHours(resetDate.getHours() + 24);
+  
+  const diff = resetDate - new Date();
+  if (diff <= 0) return 'Agora';
+  
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  return `${hours}h ${minutes}min`;
 })
 
 async function fetchUserData() {
   try {
     const response = await getCurrentUser()
-    if (response.success) {
-      currentUser.value = response.data
-      preferredProvider.value = response.data.preferred_provider || 'gemini'
-      localStorage.setItem('user', JSON.stringify(response.data))
+    if (response) {
+      currentUser.value = response
+      preferredProvider.value = response.preferred_provider || 'gemini'
+      localStorage.setItem('user', JSON.stringify(response))
     }
   } catch (err) {
     console.error('Erro ao buscar dados do usuário:', err)
@@ -422,23 +388,7 @@ async function handleRemoveKey(provider) {
   }
 }
 
-async function handleSavePreference() {
-  loading.value = true
-  try {
-    const response = await updatePreferredProvider(preferredProvider.value)
-    if (response.success) {
-      success(`Provedor padrão alterado para ${preferredProvider.value}`)
-      await fetchUserData()
-    }
-  } catch (err) {
-    toastError('Erro ao salvar preferência')
-  } finally {
-    loading.value = false
-  }
-}
-
 function handleEdit() {
-  // Placeholder para futura implementação de edição
   alert('Funcionalidade de edição de perfil será implementada em breve!')
 }
 
@@ -458,7 +408,7 @@ onMounted(async () => {
     }
   }
   
-  // Refresh data from API to get has_gemini_key status
+  // Refresh data from API
   await fetchUserData()
 })
 </script>
@@ -588,25 +538,6 @@ onMounted(async () => {
   font-size: 0.875rem;
   color: var(--color-gray-500);
   margin-bottom: 1.5rem;
-}
-
-.provider-preference-card {
-  background: var(--color-surface-2);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
-  border: 1px solid var(--color-border);
-  margin-bottom: 1.5rem;
-}
-
-.form-select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.9375rem;
-  background: var(--color-surface);
-  color: var(--color-gray-900);
-  cursor: pointer;
 }
 
 .providers-list {
@@ -771,48 +702,15 @@ onMounted(async () => {
   height: 20px;
 }
 
-.gemini-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn-gemini {
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.btn-save {
-  background: var(--color-primary-600);
-  color: white;
-  flex: 2;
-}
-
 .btn-save:hover:not(:disabled) {
   background: var(--color-primary-700);
-  box-shadow: var(--shadow-primary);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
   transform: translateY(-1px);
-}
-
-.btn-remove {
-  background: var(--color-surface);
-  color: var(--color-danger-600);
-  border: 1.5px solid var(--color-danger-100);
-  flex: 1;
 }
 
 .btn-remove:hover:not(:disabled) {
   background: var(--color-danger-50);
   border-color: var(--color-danger-200);
-}
-
-.btn-gemini:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .role-badge {
@@ -999,30 +897,17 @@ onMounted(async () => {
   border: 1px solid transparent;
 }
 
-.access-link svg:not(.arrow) {
+.access-link svg {
   width: 18px;
   height: 18px;
   color: var(--color-primary-600);
   flex-shrink: 0;
 }
 
-.access-link .arrow {
-  width: 16px;
-  height: 16px;
-  margin-left: auto;
-  color: var(--color-gray-400);
-  transition: transform 150ms ease, color 150ms ease;
-}
-
 .access-link:hover {
   background: var(--color-primary-50);
   border-color: var(--color-primary-200);
   color: var(--color-primary-700);
-}
-
-.access-link:hover .arrow {
-  transform: translateX(4px);
-  color: var(--color-primary-600);
 }
 
 /* Responsivo */
@@ -1058,4 +943,3 @@ onMounted(async () => {
   }
 }
 </style>
-

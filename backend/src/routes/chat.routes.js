@@ -5,6 +5,7 @@
 
 import express from "express";
 import { processQuestion } from "../services/rag.service.js";
+import { creditsService } from "../services/credits.service.js";
 import geminiService, { GEMINI_MODELS } from "../services/gemini.service.js";
 import Edital from "../models/Edital.js";
 import ChatLog from "../models/ChatLog.js";
@@ -59,13 +60,16 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key +claude_api_key');
       preferredProvider = user?.preferred_provider || 'gemini';
       
+      // Debugging
+      console.log(`[DEBUG API] User ID: ${req.user._id}, Preferred Provider: ${preferredProvider}`);
+      
       if (preferredProvider === 'openai') {
         userApiKey = user?.openai_api_key;
-      } else if (preferredProvider === 'claude') {
-        userApiKey = user?.claude_api_key;
       } else {
-        userApiKey = user?.gemini_api_key;
+        userApiKey = user?.gemini_api_key || null;
       }
+      
+      console.log(`[DEBUG API] Selected User API Key exists: ${!!userApiKey}`);
 
       conversation = await chatService.getOrCreateConversation(
         req.user._id, 
@@ -76,11 +80,29 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       conversation_id = conversation?._id;
     }
 
+    // --- CREDIT CHECK ---
+    const creditStatus = await creditsService.checkAndConsumeCredit(req.user);
+    if (!creditStatus.canProceed) {
+      return res.status(403).json({
+        success: false,
+        error: 'Créditos esgotados',
+        reason: creditStatus.reason,
+        resetIn: creditStatus.resetIn
+      });
+    }
+    // ---------------------
+
     // Process question through RAG pipeline (with user API key and provider preference)
     const result = await processQuestion(trimmedQuestion, editalId, { 
       userApiKey, 
       provider: preferredProvider 
     });
+
+    // --- CREDIT CONSUMPTION ---
+    if (result.success) {
+      await creditsService.decrementCredit(req.user._id);
+    }
+    // --------------------------
 
     const tempoRespostaMs = Date.now() - startTime;
 
@@ -174,13 +196,16 @@ router.post("/pergunta/stream", optionalAuthMiddleware, async (req, res) => {
       const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key +claude_api_key');
       preferredProvider = user?.preferred_provider || 'gemini';
 
+      // Debugging
+      console.log(`[DEBUG API] User ID: ${req.user._id}, Preferred Provider: ${preferredProvider}`);
+      
       if (preferredProvider === 'openai') {
         userApiKey = user?.openai_api_key;
-      } else if (preferredProvider === 'claude') {
-        userApiKey = user?.claude_api_key;
       } else {
-        userApiKey = user?.gemini_api_key;
+        userApiKey = user?.gemini_api_key || null;
       }
+      
+      console.log(`[DEBUG API] Selected User API Key exists: ${!!userApiKey}`);
 
       const conversation = await chatService.getOrCreateConversation(
         req.user._id, 
@@ -358,13 +383,16 @@ router.get("/sugestoes/:editalId", async (req, res) => {
       const user = await User.findById(req.user.id).select('+gemini_api_key +openai_api_key +claude_api_key');
       preferredProvider = user?.preferred_provider || 'gemini';
       
+      // Debugging
+      console.log(`[DEBUG API] User ID: ${req.user._id}, Preferred Provider: ${preferredProvider}`);
+      
       if (preferredProvider === 'openai') {
         userApiKey = user?.openai_api_key;
-      } else if (preferredProvider === 'claude') {
-        userApiKey = user?.claude_api_key;
       } else {
-        userApiKey = user?.gemini_api_key;
+        userApiKey = user?.gemini_api_key || null;
       }
+      
+      console.log(`[DEBUG API] Selected User API Key exists: ${!!userApiKey}`);
     }
 
     // Hybrid Suggested Questions

@@ -1,4 +1,4 @@
-import geminiService from '../src/services/gemini.service.js';
+import geminiService, { autoDiscoverModels } from '../src/services/gemini.service.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,7 +18,7 @@ async function test() {
 
   // 1. Test Model Discovery
   console.log("1. Testing Model Discovery...");
-  const discoverySuccess = await geminiService.autoDiscoverModels(apiKey);
+  const discoverySuccess = await autoDiscoverModels(apiKey);
   if (discoverySuccess) {
     console.log("   ✅ Models discovered and configured.");
   } else {

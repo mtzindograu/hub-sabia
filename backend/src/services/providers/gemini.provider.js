@@ -72,41 +72,71 @@ export class GeminiProvider extends BaseProvider {
    * Generate response (Chat)
    */
   async generateResponse(question, contextChunks = [], options = {}) {
-    const { userApiKey = null, model = DEFAULT_MODEL } = options;
-    try {
-      const client = this.#getClient(userApiKey);
-      
-      const contextText = contextChunks.length > 0 
-        ? contextChunks.map((c, i) => `[Trecho ${i+1}]\n${c.conteudo}`).join("\n\n")
-        : "Sem contexto.";
+    const { userApiKey = null } = options;
+    const fallbackModels = ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-flash-latest'];
+    
+    // Use requested model or default, then try fallbacks
+    const initialModel = options.model || DEFAULT_MODEL;
+    const modelsToTry = [initialModel, ...fallbackModels.filter(m => m !== initialModel)];
 
-      const prompt = `Responda de forma amigável e direta: ${question}\n\nContexto:\n${contextText}`;
+    for (const model of modelsToTry) {
+      try {
+        const client = this.#getClient(userApiKey);
+        
+        const contextText = contextChunks.length > 0 
+          ? contextChunks.map((c, i) => `[Trecho ${i+1}]\n${c.conteudo}`).join("\n\n")
+          : "Sem contexto.";
 
-      const result = await withTimeout(client.models.generateContent({
-        model: model,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      }));
+        const prompt = `Responda de forma amigável e direta: ${question}\n\nContexto:\n${contextText}`;
 
-      const usage = result.usageMetadata || {};
-      const promptTokens = usage.promptTokenCount || 0;
-      const completionTokens = usage.candidatesTokenCount || 0;
-      const totalTokens = usage.totalTokenCount || (promptTokens + completionTokens);
-      const estimatedCost = estimateCost('gemini', model, promptTokens, completionTokens);
+        const result = await withTimeout(client.models.generateContent({
+          model: model,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        }));
 
-      return {
-        success: true,
-        response: getTextFromResponse(result),
-        metadata: { 
-          model, 
-          provider: 'gemini',
-          contextUsed: contextChunks.length,
-          usage: { promptTokens, completionTokens, totalTokens, estimatedCost }
+        const usage = result.usageMetadata || {};
+        const promptTokens = usage.promptTokenCount || 0;
+        const completionTokens = usage.candidatesTokenCount || 0;
+        const totalTokens = usage.totalTokenCount || (promptTokens + completionTokens);
+        const estimatedCost = estimateCost('gemini', model, promptTokens, completionTokens);
+
+        return {
+          success: true,
+          response: getTextFromResponse(result),
+          metadata: { 
+            model, 
+            provider: 'gemini',
+            contextUsed: contextChunks.length,
+            usage: { promptTokens, completionTokens, totalTokens, estimatedCost }
+          }
+        };
+      } catch (error) {
+        // If 503 (UNAVAILABLE), try next model
+        if (error.status === 503 || (error.message && error.message.includes("503"))) {
+          console.warn(`[Gemini] Model ${model} failed with 503. Trying next model...`);
+          continue;
         }
-      };
-    } catch (error) {
-      const normalized = normalizeProviderError(error, 'gemini');
-      return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
+
+        // If not a 503, log and return error
+        console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          name: error.name,
+          stack: error.stack,
+          fullError: error
+        });
+        const normalized = normalizeProviderError(error, 'gemini');
+        return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
+      }
     }
+
+    // All models failed with 503
+    return { 
+      success: false, 
+      error: "O serviço do Gemini está temporariamente sobrecarregado. Tente novamente em alguns instantes.", 
+      errorCategory: 'QUOTA_EXCEEDED' 
+    };
   }
 
   /**
@@ -163,6 +193,14 @@ export class GeminiProvider extends BaseProvider {
         metadata: { provider: 'gemini', model: EMBEDDING_MODEL }
       };
     } catch (error) {
+      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        name: error.name,
+        stack: error.stack,
+        fullError: error
+      });
       const normalized = normalizeProviderError(error, 'gemini');
       return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
     }
@@ -214,6 +252,14 @@ export class GeminiProvider extends BaseProvider {
         }
       };
     } catch (error) {
+      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        name: error.name,
+        stack: error.stack,
+        fullError: error
+      });
       const normalized = normalizeProviderError(error, 'gemini');
       return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
     }
@@ -249,6 +295,14 @@ export class GeminiProvider extends BaseProvider {
         }
       };
     } catch (error) {
+      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        name: error.name,
+        stack: error.stack,
+        fullError: error
+      });
       const normalized = normalizeProviderError(error, 'gemini');
       return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
     }

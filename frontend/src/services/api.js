@@ -306,8 +306,12 @@ export async function updateProviderConfig(provider, apiKey) {
  * @param {string} provider - 'gemini', 'openai' or 'claude'
  * @returns {Promise<Object>} Update result
  */
-export async function updatePreferredProvider(provider) {
-  return api.post("/auth/provider-preference", { provider });
+/**
+ * Mark user plan as acknowledged
+ * @returns {Promise<Object>} Update result
+ */
+export async function acknowledgePlan() {
+  return api.post("/auth/acknowledge-plan");
 }
 
 /**

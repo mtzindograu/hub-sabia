@@ -1,19 +1,16 @@
 import { geminiProvider, GEMINI_MODELS } from "./providers/gemini.provider.js";
 import { openaiProvider } from "./providers/openai.provider.js";
-import { claudeProvider } from "./providers/claude.provider.js";
 
 /**
  * Provider Manager
- * Orchestrates multiple AI providers (Gemini, OpenAI, Claude, etc.)
- * Currently supports: Gemini, OpenAI, Claude
+ * Orchestrates multiple AI providers (Gemini, OpenAI, etc.)
  */
 class ProviderManager {
   constructor() {
     this.providers = {
       gemini: geminiProvider,
       openai: openaiProvider,
-      claude: claudeProvider,
-      // mistral: null, // Future
+      // claude: claudeProvider, // Temporarily disabled
       // grok: null, // Future
     };
     this.defaultProvider = 'gemini';
@@ -31,7 +28,7 @@ class ProviderManager {
 
   /**
    * Generate response (Chat) with optional fallback
-   * FALLBACK ORDER: Claude -> OpenAI -> Gemini
+   * FALLBACK ORDER: OpenAI -> Gemini
    */
   async generateResponse(question, contextChunks = [], options = {}) {
     const { provider = this.defaultProvider, enableFallback = true } = options;
@@ -45,15 +42,8 @@ class ProviderManager {
         const fallbackCategories = ['TIMEOUT', 'RATE_LIMIT', 'QUOTA_EXCEEDED'];
         
         if (fallbackCategories.includes(result.errorCategory)) {
-          // Fallback sequence logic
-          if (provider === 'claude') {
-            console.log(`[ProviderManager] Claude failed. Checking fallback to OpenAI...`);
-            if (options.openaiApiKey || process.env.OPENAI_API_KEY) {
-              return this.generateResponse(question, contextChunks, { ...options, provider: 'openai' });
-            }
-          }
           
-          if (provider === 'openai' || provider === 'claude') {
+          if (provider === 'openai') {
             console.log(`[ProviderManager] Fallback path. Checking Gemini...`);
             const hasGeminiKey = options.userApiKey || process.env.GEMINI_API_KEY;
             if (hasGeminiKey) {

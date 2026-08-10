@@ -111,6 +111,10 @@ export async function registerUser(userData) {
     has_openai_key: !!user.openai_api_key,
     has_claude_key: !!user.claude_api_key,
     preferred_provider: user.preferred_provider,
+    currentPlan: user.currentPlan,
+    remainingCredits: user.remainingCredits,
+    usingOwnApiKey: user.usingOwnApiKey,
+    planAcknowledged: user.planAcknowledged || false,
     createdAt: user.createdAt,
   };
 }
@@ -180,6 +184,10 @@ export async function getUserById(userId) {
     has_openai_key: !!user.openai_api_key,
     has_claude_key: !!user.claude_api_key,
     preferred_provider: user.preferred_provider,
+    currentPlan: user.currentPlan,
+    remainingCredits: user.remainingCredits,
+    usingOwnApiKey: user.usingOwnApiKey,
+    planAcknowledged: user.planAcknowledged || false,
     createdAt: user.createdAt,
   };
 }
@@ -206,6 +214,10 @@ export async function getUserByEmail(email) {
     has_openai_key: !!user.openai_api_key,
     has_claude_key: !!user.claude_api_key,
     preferred_provider: user.preferred_provider,
+    currentPlan: user.currentPlan,
+    remainingCredits: user.remainingCredits,
+    usingOwnApiKey: user.usingOwnApiKey,
+    planAcknowledged: user.planAcknowledged || false,
     createdAt: user.createdAt,
   };
 }
@@ -249,6 +261,9 @@ export async function updateUserProfile(userId, updateData) {
     has_openai_key: !!updatedUser.openai_api_key,
     has_claude_key: !!updatedUser.claude_api_key,
     preferred_provider: updatedUser.preferred_provider,
+    currentPlan: updatedUser.currentPlan,
+    remainingCredits: updatedUser.remainingCredits,
+    usingOwnApiKey: updatedUser.usingOwnApiKey,
     createdAt: updatedUser.createdAt,
     updatedAt: updatedUser.updatedAt,
   };
@@ -273,6 +288,10 @@ export async function listAllUsers() {
     has_openai_key: !!user.openai_api_key,
     has_claude_key: !!user.claude_api_key,
     preferred_provider: user.preferred_provider,
+    currentPlan: user.currentPlan,
+    remainingCredits: user.remainingCredits,
+    usingOwnApiKey: user.usingOwnApiKey,
+    planAcknowledged: user.planAcknowledged || false,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   }));

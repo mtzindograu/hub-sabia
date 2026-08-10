@@ -162,90 +162,29 @@
 
       <!-- AI Provider Onboarding Overlay -->
       <main class="chat-main">
-        <div v-if="isLoggedIn && !isChatUnlocked" class="provider-onboarding-overlay">
+        <PlanSelectionModal 
+          :is-visible="isPlanSelectionModalVisible" 
+          @select-plan="handleAcknowledgePlan"
+        />
+
+        <div v-if="isLoggedIn && userData" class="chat-header-actions">
+           <CurrentPlanCard :user="userData" @open-modal="isPlanSelectionModalVisible = true" />
+        </div>
+
+        <!-- Credits Exhausted Modal -->
+        <div v-if="isExhaustedModalVisible" class="provider-onboarding-overlay">
           <div class="tutorial-container">
             <div class="tutorial-header">
-              <span class="tutorial-badge">Configuração Necessária</span>
-              <h1>Configure sua Inteligência Artificial</h1>
-              <p>O HUB-SABIÁ suporta múltiplos modelos de IA (Gemini, OpenAI e Claude) para responder suas dúvidas sobre editais acadêmicos.</p>
-            </div>
-
-            <!-- Steps Progress -->
-            <div class="steps-progress">
-              <div 
-                v-for="step in tutorialSteps" 
-                :key="step.step" 
-                class="step-dot"
-                :class="{ active: currentStep === step.step, completed: currentStep > step.step }"
-                @click="currentStep = step.step"
-              >
-                {{ step.step }}
-              </div>
-            </div>
-
-            <!-- Step Content -->
-            <div class="step-card" :key="currentStep">
-              <div class="step-icon">{{ tutorialSteps[currentStep-1].icon }}</div>
-              <div class="step-info">
-                <span class="step-number">Passo {{ currentStep }} de 3</span>
-                <h3>{{ tutorialSteps[currentStep-1].title }}</h3>
-                <p>{{ tutorialSteps[currentStep-1].description }}</p>
-                
-                <router-link 
-                  v-if="tutorialSteps[currentStep-1].isProfileLink" 
-                  to="/perfil" 
-                  class="btn-tutorial-action"
-                >
-                  {{ tutorialSteps[currentStep-1].actionLabel }}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                </router-link>
-
-                <a 
-                  v-else-if="tutorialSteps[currentStep-1].actionUrl" 
-                  :href="tutorialSteps[currentStep-1].actionUrl" 
-                  target="_blank" 
-                  class="btn-tutorial-action"
-                >
-                  {{ tutorialSteps[currentStep-1].actionLabel }}
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
-                </a>
-              </div>
-            </div>
-
-            <div class="tutorial-navigation">
-              <button 
-                class="btn-nav prev" 
-                :disabled="currentStep === 1" 
-                @click="currentStep--"
-              >
-                Voltar
-              </button>
-              
-              <div v-if="currentStep === 3" class="final-form">
-                <router-link to="/perfil" class="btn-nav save">
-                  Ir para Configurações de IA
-                </router-link>
-              </div>
-
-              <button 
-                v-else
-                class="btn-nav next" 
-                @click="currentStep++"
-              >
-                Próximo Passo
-              </button>
+              <h1>Plano Gratuito utilizado</h1>
+              <p>Você utilizou todos os créditos gratuitos disponíveis hoje.</p>
             </div>
             
-            <p class="tutorial-help">
-              Precisa de ajuda? <router-link to="/perfil">Ver todas as opções de perfil</router-link>
-            </p>
+            <div class="plan-card">
+              <p>Sua cota diária será renovada automaticamente em breve.</p>
+              <router-link to="/perfil" class="btn-primary">
+                Utilizar minha própria conta
+              </router-link>
+            </div>
           </div>
         </div>
 
@@ -399,6 +338,8 @@
 import { ref, onMounted, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import MessageBubble from "../components/MessageBubble.vue";
+import CurrentPlanCard from "../components/CurrentPlanCard.vue";
+import PlanSelectionModal from "../components/PlanSelectionModal.vue";
 import {
   askQuestion,
   getEditais,
@@ -406,6 +347,8 @@ import {
   getConversations,
   getConversationMessages,
   updateGeminiKey,
+  acknowledgePlan,
+  getCurrentUser,
 } from "../services/api.js";
 import { error as showError, success as showSuccess } from "../utils/toast.js";
 import ThemeToggle from "../components/ThemeToggle.vue";
@@ -427,32 +370,28 @@ const showScrollButton = ref(false);
 const editaisLoaded = ref(false);
 const isLoggedIn = ref(false);
 const isChatUnlocked = ref(false);
+const userData = ref(null);
+const isPlanSelectionModalVisible = ref(false);
+const isExhaustedModalVisible = ref(false);
+const isPlanAcknowledged = ref(true);
 
 // Tutorial steps
 const currentStep = ref(1);
 const tutorialSteps = [
   {
     step: 1,
-    title: "Escolha seu Provedor",
-    description: "O HUB-SABIÁ suporta Google Gemini, OpenAI e Anthropic Claude. Escolha o seu preferido no perfil.",
+    title: "Chat Iniciado",
+    description: "Você está utilizando o Gemini Gratuito fornecido pelo HubSabia.",
     icon: "🤖",
-    actionLabel: "Ver Provedores",
-    isProfileLink: true
+    actionLabel: "Começar",
+    isProfileLink: false
   },
   {
     step: 2,
-    title: "Obtenha sua Chave (Gemini)",
-    description: "Se optar pelo Gemini, você precisará de uma chave gratuita do Google AI Studio. OpenAI e Claude usam infraestrutura global.",
+    title: "Chave Pessoal (Opcional)",
+    description: "Se desejar, você pode configurar sua própria chave API no perfil para aumentar seus limites.",
     icon: "🔑",
-    actionLabel: "Abrir AI Studio",
-    actionUrl: "https://aistudio.google.com/app/apikey"
-  },
-  {
-    step: 3,
-    title: "Ative o Chat",
-    description: "Basta configurar seu provedor preferido e salvar. O chat será desbloqueado automaticamente!",
-    icon: "🚀",
-    actionLabel: "Ir para Perfil",
+    actionLabel: "Configurar (Opcional)",
     isProfileLink: true
   }
 ];
@@ -485,22 +424,48 @@ onMounted(async () => {
   scrollToBottom();
 });
 
-function checkUserKey() {
+async function refreshUserData() {
   try {
-    const stored = localStorage.getItem("user");
-    if (stored) {
-      const user = JSON.parse(stored);
-      // O chat é liberado se:
-      // 1. O usuário tiver uma chave Gemini configurada
-      // 2. OU se o provedor preferido for OpenAI ou Claude (que usam chaves globais)
-      isChatUnlocked.value = !!(
-        user.has_gemini_key || 
-        user.preferred_provider === 'openai' || 
-        user.preferred_provider === 'claude'
-      );
-    }
+    const user = await getCurrentUser();
+    userData.value = user;
+    isPlanAcknowledged.value = !!user.planAcknowledged;
+    // Update local cache
+    localStorage.setItem("user", JSON.stringify(user));
   } catch (err) {
-    isChatUnlocked.value = false;
+    console.error("Error refreshing user data:", err);
+  }
+}
+
+function checkUserKey() {
+  isChatUnlocked.value = isLoggedIn.value;
+  const stored = localStorage.getItem("user");
+  if (stored) {
+    const user = JSON.parse(stored);
+    userData.value = user;
+    isPlanAcknowledged.value = !!user.planAcknowledged;
+  }
+  
+  if (isLoggedIn.value) {
+    refreshUserData();
+  }
+  
+  isPlanSelectionModalVisible.value = isLoggedIn.value && !isPlanAcknowledged.value;
+}
+
+async function handleAcknowledgePlan() {
+  console.log('[DEBUG] handleAcknowledgePlan called');
+  try {
+    await acknowledgePlan();
+    console.log('[DEBUG] acknowledgePlan API call successful');
+    await refreshUserData();
+    console.log('[DEBUG] refreshUserData successful');
+    isPlanSelectionModalVisible.value = false;
+    isPlanAcknowledged.value = true;
+    console.log('[DEBUG] UI state updated');
+    showSuccess('Plano atualizado com sucesso!');
+  } catch (err) {
+    console.error("Error acknowledging plan:", err);
+    showError('Erro ao atualizar plano.');
   }
 }
 
@@ -631,13 +596,23 @@ async function sendMessage() {
       sources: response.data.fontes,
       metadata: response.data.metadata,
     });
+
+    // Update credits
+    if (response.data.creditStatus) {
+      credits.value = response.data.creditStatus.remaining;
+    }
   } catch (error) {
-    showError(error.message || "Erro ao processar pergunta");
-    messages.value.push({
-      type: "error",
-      content: "Erro de conexão. Tente novamente.",
-    });
-  } finally {
+    if (error.response?.status === 403) {
+      isExhaustedModalVisible.value = true;
+    } else {
+      showError(error.message || "Erro ao processar pergunta");
+      messages.value.push({
+        type: "error",
+        content: "Erro de conexão. Tente novamente.",
+      });
+    }
+  }
+ finally {
     loading.value = false;
   }
 }
@@ -1263,6 +1238,13 @@ function autoResize() {
 }
 
 /* AI Provider Onboarding Styles */
+.chat-header-actions {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+}
+
 .provider-onboarding-overlay {
   position: absolute;
   top: 0;
@@ -1498,6 +1480,85 @@ function autoResize() {
   }
   .chat-sidebar {
     display: none;
+  }
+}
+.plan-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.plan-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+}
+
+.plan-card.primary {
+  border-color: var(--color-primary-300);
+  background: var(--color-primary-50);
+}
+
+.plan-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-primary-700);
+  background: var(--color-primary-100);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--color-gray-600);
+}
+
+.ia-info {
+  font-size: 0.85rem;
+  color: var(--color-gray-500);
+  margin: 0;
+}
+
+.btn-primary {
+  background: var(--color-primary-600);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-primary-600);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  border: 1px solid var(--color-primary-200);
+  text-decoration: none;
+  width: 100%;
+  display: block;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .plan-options {
+    grid-template-columns: 1fr;
   }
 }
 </style>
