@@ -4,9 +4,10 @@
  */
 
 import express from "express";
-import { processQuestion } from "../services/rag.service.js";
+import mongoose from "mongoose";
+import { processQuestion, retrieveContext } from "../services/rag.service.js";
 import { creditsService } from "../services/credits.service.js";
-import geminiService, { GEMINI_MODELS } from "../services/gemini.service.js";
+import { GEMINI_MODELS } from "../services/gemini.service.js";
 import Edital from "../models/Edital.js";
 import ChatLog from "../models/ChatLog.js";
 import chatService from "../services/chat.service.js";
@@ -16,6 +17,8 @@ import UsageLog from "../models/UsageLog.js";
 import providerManager from "../services/provider-manager.js";
 
 const router = express.Router();
+
+const isValidObjectId = (v) => mongoose.Types.ObjectId.isValid(v);
 
 /**
  * @route   POST /api/chat/pergunta
@@ -50,56 +53,62 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Get or create conversation for logged in user
+    // Validar IDs malformados antes de tocar no banco (evita CastError 500)
+    if (conversation_id && !isValidObjectId(conversation_id)) {
+      return res.status(400).json({ success: false, error: "conversationId inválido" });
+    }
+    if (editalId && !isValidObjectId(editalId)) {
+      return res.status(400).json({ success: false, error: "editalId inválido" });
+    }
+
+    // --- CREDIT CHECK (apenas usuários logados; anônimos passam direto) ---
+    let creditStatus = null;
+    if (req.user) {
+      creditStatus = await creditsService.checkAndConsumeCredit(req.user);
+      if (!creditStatus.canProceed) {
+        return res.status(403).json({
+          success: false,
+          error: 'Créditos esgotados',
+          reason: creditStatus.reason,
+          resetIn: creditStatus.resetIn
+        });
+      }
+    }
+    // ---------------------
+
+    // Get or create conversation for logged in user (após o cheque de crédito)
     let conversation = null;
     let userApiKey = null;
     let preferredProvider = 'gemini';
 
     if (req.user) {
       // Fetch user with API Keys and preference
-      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key +claude_api_key');
+      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key');
       preferredProvider = user?.preferred_provider || 'gemini';
-      
-      // Debugging
-      console.log(`[DEBUG API] User ID: ${req.user._id}, Preferred Provider: ${preferredProvider}`);
-      
+
       if (preferredProvider === 'openai') {
         userApiKey = user?.openai_api_key;
       } else {
         userApiKey = user?.gemini_api_key || null;
       }
-      
-      console.log(`[DEBUG API] Selected User API Key exists: ${!!userApiKey}`);
 
       conversation = await chatService.getOrCreateConversation(
-        req.user._id, 
-        editalId, 
-        conversation_id, 
+        req.user._id,
+        editalId,
+        conversation_id,
         trimmedQuestion
       );
       conversation_id = conversation?._id;
     }
 
-    // --- CREDIT CHECK ---
-    const creditStatus = await creditsService.checkAndConsumeCredit(req.user);
-    if (!creditStatus.canProceed) {
-      return res.status(403).json({
-        success: false,
-        error: 'Créditos esgotados',
-        reason: creditStatus.reason,
-        resetIn: creditStatus.resetIn
-      });
-    }
-    // ---------------------
-
     // Process question through RAG pipeline (with user API key and provider preference)
-    const result = await processQuestion(trimmedQuestion, editalId, { 
-      userApiKey, 
-      provider: preferredProvider 
+    const result = await processQuestion(trimmedQuestion, editalId, {
+      userApiKey,
+      provider: preferredProvider
     });
 
-    // --- CREDIT CONSUMPTION ---
-    if (result.success) {
+    // --- CREDIT CONSUMPTION (só logado e só se houve chamada de IA) ---
+    if (req.user && result.success && result.metadata?.usedAI !== false) {
       await creditsService.decrementCredit(req.user._id);
     }
     // --------------------------
@@ -141,6 +150,7 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       return res.status(500).json({
         success: false,
         error: result.error || "Failed to process question",
+        code: 'AI_PROCESSING_ERROR',
       });
     }
 
@@ -152,6 +162,14 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
         resposta: result.response,
         fontes: result.sources,
         conversationId: conversation_id,
+        creditStatus: req.user
+          ? {
+              remaining: creditStatus?.creditsRemaining ?? null,
+              resetIn: creditStatus?.resetIn ?? 0,
+              plan: creditStatus?.currentPlan ?? null,
+              usingOwnKey: !!creditStatus?.usingOwnKey,
+            }
+          : null,
         metadata: {
           processingTime: result.metadata.processingTime,
           chunksUsed: result.metadata.chunksUsed,
@@ -160,10 +178,11 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[API] Chat error:", error);
+    console.error("[API] Chat error:", error.message);
     res.status(500).json({
       success: false,
-      error: "Ops! Não consegui processar sua pergunta agora 😅 Tenta de novo em instantes!",
+      error: "Ops! Não consegui processar sua pergunta agora. Tenta de novo em instantes!",
+      code: 'INTERNAL_ERROR',
     });
   }
 });
@@ -181,56 +200,85 @@ router.post("/pergunta/stream", optionalAuthMiddleware, async (req, res) => {
   try {
     const { pergunta, editalId } = req.body;
 
-    if (!pergunta) {
+    if (!pergunta || typeof pergunta !== "string" || pergunta.trim().length < 5) {
       return res.status(400).json({
         success: false,
-        error: "Pergunta é obrigatória",
+        error: "Pergunta inválida",
       });
     }
+
+    // Validar IDs malformados
+    if (conversation_id && !isValidObjectId(conversation_id)) {
+      return res.status(400).json({ success: false, error: "conversationId inválido" });
+    }
+    if (editalId && !isValidObjectId(editalId)) {
+      return res.status(400).json({ success: false, error: "editalId inválido" });
+    }
+
+    // --- CREDIT CHECK (só logado) ---
+    let creditStatus = null;
+    if (req.user) {
+      creditStatus = await creditsService.checkAndConsumeCredit(req.user);
+      if (!creditStatus.canProceed) {
+        return res.status(403).json({
+          success: false,
+          error: 'Créditos esgotados',
+          reason: creditStatus.reason,
+          resetIn: creditStatus.resetIn
+        });
+      }
+    }
+    // ---------------------
 
     // Get or create conversation for logged in user
     let userApiKey = null;
     let preferredProvider = 'gemini';
 
     if (req.user) {
-      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key +claude_api_key');
+      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key');
       preferredProvider = user?.preferred_provider || 'gemini';
 
-      // Debugging
-      console.log(`[DEBUG API] User ID: ${req.user._id}, Preferred Provider: ${preferredProvider}`);
-      
       if (preferredProvider === 'openai') {
         userApiKey = user?.openai_api_key;
       } else {
         userApiKey = user?.gemini_api_key || null;
       }
-      
-      console.log(`[DEBUG API] Selected User API Key exists: ${!!userApiKey}`);
 
       const conversation = await chatService.getOrCreateConversation(
-        req.user._id, 
-        editalId, 
-        conversation_id, 
+        req.user._id,
+        editalId,
+        conversation_id,
         pergunta
       );
       conversation_id = conversation?._id;
     }
+
+    // Recuperar contexto RAG real (chunks relevantes) — sem isso o stream responde sem os editais
+    const { chunks } = await retrieveContext(pergunta.trim(), editalId, {
+      userApiKey,
+      provider: preferredProvider,
+    });
 
     // Set headers for SSE
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Process question with streaming
-    const stream = providerManager.streamResponse(pergunta, editalId ? [] : [], { 
-      userApiKey, 
-      provider: preferredProvider 
+    // Aborta a geração se o cliente desconectar (evita custo desnecessário)
+    let aborted = false;
+    req.on("close", () => { aborted = true; });
+
+    const stream = providerManager.streamResponse(pergunta.trim(), chunks, {
+      userApiKey,
+      provider: preferredProvider,
     });
 
     let fullResponse = "";
     let finalMetadata = null;
 
     for await (const chunk of stream) {
+      if (aborted) break;
+
       if (chunk.error) {
         res.write(`data: ${JSON.stringify({ error: chunk.error, errorCategory: chunk.errorCategory })}\n\n`);
         break;
@@ -256,15 +304,24 @@ router.post("/pergunta/stream", optionalAuthMiddleware, async (req, res) => {
         conversation_id,
         tempoRespostaMs: Date.now() - startTime,
         status: "success",
-        metadata: finalMetadata
+        metadata: { ...(finalMetadata || {}), chunksUsed: chunks.length }
       };
       chatService.logChatInteraction(logData).catch(e => console.error("Stream log error:", e));
+
+      // --- CREDIT CONSUMPTION (só logado e só com resposta) ---
+      if (req.user) {
+        await creditsService.decrementCredit(req.user._id);
+      }
+      // --------------------------
     }
 
     res.end();
   } catch (error) {
-    console.error("[API] Stream chat error:", error);
-    res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+    console.error("[API] Stream chat error:", error.message);
+    if (!res.headersSent) {
+      return res.status(500).json({ success: false, error: "Erro ao processar a pergunta" });
+    }
+    res.write(`data: ${JSON.stringify({ error: "Erro ao processar a pergunta" })}\n\n`);
     res.end();
   }
 });
@@ -282,9 +339,10 @@ router.get("/conversas", authMiddleware, async (req, res) => {
       data: conversations
     });
   } catch (error) {
+    console.error("[API] Conversations error:", error.message);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: "Erro ao buscar conversas"
     });
   }
 });
@@ -302,9 +360,10 @@ router.get("/conversa/:id", authMiddleware, async (req, res) => {
       data: messages
     });
   } catch (error) {
+    console.error("[API] Conversation messages error:", error.message);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: "Erro ao buscar mensagens da conversa"
     });
   }
 });
@@ -312,9 +371,9 @@ router.get("/conversa/:id", authMiddleware, async (req, res) => {
 /**
  * @route   POST /api/chat/feedback
  * @desc    Submit feedback for a chat interaction
- * @access  Public (Optional Auth)
+ * @access  Private (apenas o dono da interação ou admin)
  */
-router.post("/feedback", async (req, res) => {
+router.post("/feedback", authMiddleware, async (req, res) => {
   try {
     const { logId, feedback } = req.body;
 
@@ -325,11 +384,7 @@ router.post("/feedback", async (req, res) => {
       });
     }
 
-    const log = await ChatLog.findByIdAndUpdate(
-      logId,
-      { feedback },
-      { new: true }
-    );
+    const log = await ChatLog.findById(logId);
 
     if (!log) {
       return res.status(404).json({
@@ -338,13 +393,27 @@ router.post("/feedback", async (req, res) => {
       });
     }
 
+    // Não-admin só avalia as próprias interações
+    if (req.user.role !== 'admin' && log.usuario_id?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: "Você só pode avaliar suas próprias interações",
+      });
+    }
+
+    await ChatLog.findByIdAndUpdate(
+      logId,
+      { feedback },
+      { new: true }
+    );
+
     res.json({
       success: true,
       message: "Feedback enviado com sucesso",
     });
   } catch (error) {
-    console.error("[API] Feedback error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("[API] Feedback error:", error.message);
+    res.status(500).json({ success: false, error: "Erro ao processar feedback" });
   }
 });
 
@@ -375,25 +444,6 @@ router.get("/sugestoes/:editalId", async (req, res) => {
 
     const chunks = edital.chunks.slice(0, 5);
     const content = chunks.map((c) => c.conteudo).join("\n\n");
-    
-    // Fetch user's AI preference
-    let userApiKey = null;
-    let preferredProvider = 'gemini';
-    if (req.user) {
-      const user = await User.findById(req.user.id).select('+gemini_api_key +openai_api_key +claude_api_key');
-      preferredProvider = user?.preferred_provider || 'gemini';
-      
-      // Debugging
-      console.log(`[DEBUG API] User ID: ${req.user._id}, Preferred Provider: ${preferredProvider}`);
-      
-      if (preferredProvider === 'openai') {
-        userApiKey = user?.openai_api_key;
-      } else {
-        userApiKey = user?.gemini_api_key || null;
-      }
-      
-      console.log(`[DEBUG API] Selected User API Key exists: ${!!userApiKey}`);
-    }
 
     // Hybrid Suggested Questions
     let questions = [
@@ -406,10 +456,9 @@ router.get("/sugestoes/:editalId", async (req, res) => {
       // Use Provider Manager
       const prompt = `Com base no seguinte conteúdo de edital acadêmico, sugira 5 perguntas que estudantes frequentemente fazem (responda com uma lista numerada):\n\n${content.slice(0, 5000)}\n\nResponda apenas com as perguntas.`;
       
-      const result = await providerManager.generateResponse(prompt, [], { 
-        userApiKey, 
-        provider: preferredProvider,
-        model: preferredProvider === 'gemini' ? GEMINI_MODELS.FAST : undefined 
+      const result = await providerManager.generateResponse(prompt, [], {
+        provider: 'gemini',
+        model: GEMINI_MODELS.FAST,
       });
 
       if (result.success && result.response) {
@@ -430,8 +479,8 @@ router.get("/sugestoes/:editalId", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("[API] Suggestions error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("[API] Suggestions error:", error.message);
+    res.status(500).json({ success: false, error: "Erro ao gerar sugestões" });
   }
 });
 
@@ -442,7 +491,10 @@ router.get("/sugestoes/:editalId", async (req, res) => {
  */
 router.get("/historico", optionalAuthMiddleware, async (req, res) => {
   try {
-    const { editalId, limit = 20, offset = 0, campus_id } = req.query;
+    const { editalId, campus_id } = req.query;
+    // Parse seguro: evita NaN do parseInt e limite o tamanho da consulta
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
 
     const query = {};
     if (editalId) query.edital_id = editalId;
@@ -458,8 +510,8 @@ router.get("/historico", optionalAuthMiddleware, async (req, res) => {
     const total = await ChatLog.countDocuments(query);
     const logs = await ChatLog.find(query)
       .sort({ createdAt: -1 })
-      .skip(parseInt(offset))
-      .limit(parseInt(limit))
+      .skip(offset)
+      .limit(limit)
       .populate('edital_id', 'titulo');
 
     res.json({
@@ -467,14 +519,14 @@ router.get("/historico", optionalAuthMiddleware, async (req, res) => {
       data: logs,
       pagination: {
         total,
-        limit: parseInt(limit),
-        offset: parseInt(offset),
-        hasMore: total > parseInt(offset) + parseInt(limit),
+        limit,
+        offset,
+        hasMore: total > offset + limit,
       },
     });
   } catch (error) {
-    console.error("[API] History error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("[API] History error:", error.message);
+    res.status(500).json({ success: false, error: "Erro ao buscar histórico" });
   }
 });
 
