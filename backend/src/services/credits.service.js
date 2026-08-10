@@ -26,10 +26,23 @@ export const creditsService = {
 
   /**
    * Check and consume credits
-   * @param {object} user - User document
+   * @param {object|null} user - User document (pode ser undefined/null em requisições anônimas)
    * @returns {object} Status object
    */
   async checkAndConsumeCredit(user) {
+    // Usuário anônimo: não passa por controle de crédito (roteamento via optionalAuthMiddleware)
+    if (!user || !user._id) {
+      return {
+        canProceed: true,
+        anonymous: true,
+        creditsRemaining: null,
+        resetIn: 0,
+        reason: null,
+        currentPlan: null,
+        usingOwnKey: false
+      };
+    }
+
     const userData = this._ensureUserFields(user);
 
     // 1. If using own API Key, proceed freely
@@ -90,31 +103,18 @@ export const creditsService = {
   /**
    * Decrement credit only after successful API call
    * @param {string} userId - ID do usuário
+   * @returns {Promise<object|null>} Resultado do update (ou null se userId inválido)
    */
   async decrementCredit(userId) {
+    if (!userId) return { matchedCount: 0, modifiedCount: 0 };
     // Atomic decrement ensuring it never goes below 0
-    await User.findOneAndUpdate(
+    return User.findOneAndUpdate(
       { 
         _id: userId,
         'usingOwnApiKey.active': { $ne: true },
         remainingCredits: { $gt: 0 }
       },
       { $inc: { remainingCredits: -1 } }
-    );
-  },
-
-  /**
-   * Manual reset logic for testing or administrative purposes
-   */
-  async forceReset(userId) {
-    await User.findOneAndUpdate(
-      { _id: userId },
-      { 
-        $set: { 
-          remainingCredits: DAILY_CREDIT_LIMIT, 
-          lastCreditReset: new Date() 
-        } 
-      }
     );
   }
 };
