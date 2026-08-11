@@ -1000,10 +1000,13 @@ function autoResize() {
   height: 18px;
 }
 
-/* Messages Container */
+/* Messages Container — altura limitada (não cresce sem teto) */
 .messages-container {
-  flex: 1;
-  overflow-y: scroll;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 60vh;
+  max-height: 60vh;
+  overflow-y: auto;
   padding: 1rem;
   scroll-behavior: smooth;
   background: var(--color-bg);
