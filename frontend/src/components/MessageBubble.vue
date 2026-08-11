@@ -95,16 +95,25 @@
     </div>
     
     <!-- Error Message -->
-    <div v-else-if="message.type === 'error'" class="error-message">
+    <div v-else-if="message.type === 'error'" class="error-message" :class="message.tone ? 'tone-' + message.tone : ''">
       <div class="message-avatar error">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg v-if="message.tone === 'warning'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <line x1="15" y1="9" x2="9" y2="15"/>
           <line x1="9" y1="9" x2="15" y2="15"/>
         </svg>
       </div>
       <div class="message-content error">
+        <p v-if="message.title" class="error-title">{{ message.title }}</p>
         <p>{{ message.content }}</p>
+        <router-link v-if="message.action" :to="message.action.to" class="error-action">
+          {{ message.action.label }}
+        </router-link>
       </div>
     </div>
   </div>
@@ -450,6 +459,45 @@ function formatProvider(provider) {
   margin: 0;
   color: var(--color-danger-700);
   line-height: 1.5;
+}
+
+.error-title {
+  font-weight: 700;
+  margin-bottom: 0.15rem !important;
+}
+
+/* Tom âmbar (avisos amigáveis, ex.: créditos esgotados) */
+.error-message.tone-warning .message-avatar.error {
+  background: var(--color-warning-50);
+  color: var(--color-warning-700);
+}
+
+.error-message.tone-warning .message-content {
+  background: var(--color-warning-50);
+  border-color: var(--color-warning-500);
+}
+
+.error-message.tone-warning .message-content p {
+  color: var(--color-warning-700);
+}
+
+/* CTA dentro da mensagem de erro */
+.error-action {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-600);
+  color: var(--color-text-inverse);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.error-action:hover {
+  background: var(--color-primary-700);
 }
 
 /* Responsive */

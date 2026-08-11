@@ -567,8 +567,11 @@ async function sendMessage() {
   ) {
     messages.value.push({
       type: "error",
+      tone: "warning",
+      title: "Créditos de hoje esgotados",
       content:
-        "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou configure sua própria chave de IA no perfil para uso ilimitado.",
+        "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou use sua própria chave de IA para não ter limite.",
+      action: { to: "/perfil", label: "Usar minha chave de IA" },
     });
     return;
   }
@@ -626,8 +629,11 @@ async function sendMessage() {
     } else if (error.code === "CREDITS_EXHAUSTED") {
       messages.value.push({
         type: "error",
+        tone: "warning",
+        title: "Créditos de hoje esgotados",
         content:
-          "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou configure sua própria chave de IA no perfil para uso ilimitado.",
+          "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou use sua própria chave de IA para não ter limite.",
+        action: { to: "/perfil", label: "Usar minha chave de IA" },
       });
     } else {
       showError(error.message || "Erro ao processar pergunta");
