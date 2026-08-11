@@ -301,6 +301,20 @@
             </button>
           </div>
 
+          <!-- Aviso de créditos: fica FORA do fluxo de mensagens, acima do input -->
+          <div v-if="creditsExhausted" class="credits-notice" role="status">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <span>
+              Você usou os 20 créditos de hoje — eles renovam automaticamente, ou
+              <router-link to="/perfil">use sua própria chave de IA</router-link>
+              para não ter limite.
+            </span>
+          </div>
+
           <!-- Input Area -->
           <div class="input-area">
             <form @submit.prevent="sendMessage" class="input-form">
@@ -341,7 +355,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import MessageBubble from "../components/MessageBubble.vue";
 import CurrentPlanCard from "../components/CurrentPlanCard.vue";
@@ -376,6 +390,13 @@ const showScrollButton = ref(false);
 const editaisLoaded = ref(false);
 const isLoggedIn = ref(false);
 const userData = ref(null);
+// Sem créditos e sem chave própria → barra de aviso acima do input
+const creditsExhausted = computed(
+  () =>
+    !!userData.value &&
+    !userData.value.usingOwnApiKey?.active &&
+    (userData.value.remainingCredits ?? 20) <= 0,
+);
 const isPlanSelectionModalVisible = ref(false);
 const isPlanAcknowledged = ref(true);
 const authGateVisible = ref(false);
@@ -571,20 +592,9 @@ async function sendMessage() {
     inputField.value.style.height = "auto";
   }
 
-  // Bloqueio local: sem créditos → erro no chat após a mensagem, NÃO faz a requisição
-  if (
-    userData.value &&
-    !userData.value.usingOwnApiKey?.active &&
-    (userData.value.remainingCredits ?? 20) <= 0
-  ) {
-    messages.value.push({
-      type: "error",
-      tone: "warning",
-      title: "Créditos de hoje esgotados",
-      content:
-        "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou use sua própria chave de IA para não ter limite.",
-      action: { to: "/perfil", label: "Usar minha chave de IA" },
-    });
+  // Bloqueio local: sem créditos → mensagem aparece, aviso fica na barra acima
+  // do input (fora do fluxo), NÃO faz a requisição
+  if (creditsExhausted.value) {
     return;
   }
 
@@ -627,14 +637,11 @@ async function sendMessage() {
       authGateVisible.value = true;
       isLoggedIn.value = false;
     } else if (error.code === "CREDITS_EXHAUSTED") {
-      messages.value.push({
-        type: "error",
-        tone: "warning",
-        title: "Créditos de hoje esgotados",
-        content:
-          "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou use sua própria chave de IA para não ter limite.",
-        action: { to: "/perfil", label: "Usar minha chave de IA" },
-      });
+      // Sessão dessincronizada: sincroniza o saldo — a barra de aviso aparece
+      if (userData.value) {
+        userData.value = { ...userData.value, remainingCredits: 0 };
+        localStorage.setItem("user", JSON.stringify(userData.value));
+      }
     } else {
       showError(error.message || "Erro ao processar pergunta");
       messages.value.push({
@@ -1191,9 +1198,41 @@ function autoResize() {
   color: var(--color-primary-600);
 }
 
+/* Aviso de créditos (barra acima do input) */
+.credits-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 1rem 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--color-warning-50);
+  border: 1px solid var(--color-warning-500);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  color: var(--color-warning-700);
+  line-height: 1.45;
+}
+
+.credits-notice svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--color-warning-600);
+}
+
+.credits-notice a {
+  color: var(--color-primary-600);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.credits-notice a:hover {
+  text-decoration: underline;
+}
+
 /* Input Area */
 .input-area {
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.5rem;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
 }
