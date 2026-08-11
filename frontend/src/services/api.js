@@ -321,6 +321,15 @@ export async function acknowledgePlan() {
 }
 
 /**
+ * Alterna o modo de uso: 'free' (créditos diários) ou 'own-key' (chave própria)
+ * @param {'free'|'own-key'} mode
+ * @returns {Promise<Object>} Update result
+ */
+export async function setPlanMode(mode) {
+  return api.post("/auth/plan-mode", { mode });
+}
+
+/**
  * Get all users (admin only)
  * @returns {Promise<Object>} List of users
  */

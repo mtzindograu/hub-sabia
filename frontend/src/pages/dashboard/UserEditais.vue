@@ -1,82 +1,42 @@
 <template>
   <DashboardLayout page-title="Editais">
-    <!-- Header com busca -->
-    <div class="editais-header">
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
-          <circle cx="11" cy="11" r="8"/>
-          <path d="m21 21-4.35-4.35"/>
-        </svg>
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Buscar edital por título, ano ou palavra-chave..."
-          class="search-input"
-        />
+    <section class="page-intro" aria-labelledby="editais-title">
+      <div>
+        <p class="eyebrow">Biblioteca HubSabia</p>
+        <h1 id="editais-title">Editais</h1>
+        <p class="intro-copy">Pesquise oportunidades e abra um edital para conhecer seus detalhes.</p>
       </div>
-      
-      <div class="header-right-actions">
-        <span class="count-badge">{{ filteredEditais.length }} edital{{ filteredEditais.length !== 1 ? 'is' : '' }}</span>
-        
-        <button v-if="isAdmin" class="btn-primary" @click="showUploadModal = true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          Adicionar Edital
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Carregando editais...</p>
-    </div>
-
-    <!-- Empty State -->
-    <div v-else-if="filteredEditais.length === 0" class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="empty-icon">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <polyline points="14 2 14 8 20 8"/>
-      </svg>
-      <h3 v-if="searchQuery">Nenhum edital encontrado</h3>
-      <h3 v-else>Nenhum edital disponível</h3>
-      <p v-if="searchQuery">Tente buscar com outros termos</p>
-      <p v-else>Os editais aparecerão aqui quando forem adicionados ao sistema</p>
-      
-      <button v-if="isAdmin && !searchQuery" class="btn-primary mt-4" @click="showUploadModal = true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Adicionar Primeiro Edital
+      <button v-if="isAdmin" class="btn btn-primary upload-button" @click="showUploadModal = true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Adicionar edital
       </button>
+    </section>
+
+    <div class="editais-toolbar">
+      <label class="search-box" for="edital-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span class="sr-only">Buscar editais</span>
+        <input id="edital-search" v-model="searchQuery" type="search" placeholder="Buscar por título, ano ou palavra-chave..." class="search-input" />
+      </label>
+      <span class="count-badge">{{ filteredEditais.length }} edital{{ filteredEditais.length !== 1 ? 'is' : '' }}</span>
     </div>
 
-    <!-- Grid de Cards -->
-    <div v-else class="editais-grid">
-      <EditalCard
-        v-for="edital in filteredEditais"
-        :key="edital.id"
-        :edital="edital"
-        :isAdmin="isAdmin"
-        :showFullActions="true"
-        @view="viewEdital(edital.id)"
-        @chat="chatAboutEdital(edital.id)"
-        @deleted="handleDeleted(edital.id)"
-      />
+    <div v-if="loading" class="state-panel"><div class="spinner"></div><p>Carregando editais...</p></div>
+
+    <div v-else-if="filteredEditais.length === 0" class="state-panel empty-state">
+      <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <h2>{{ searchQuery ? 'Nenhum edital encontrado' : 'Nenhum edital disponível' }}</h2>
+      <p>{{ searchQuery ? 'Tente buscar com outros termos.' : 'Os editais aparecerão aqui quando forem adicionados ao sistema.' }}</p>
+      <button v-if="isAdmin && !searchQuery" class="btn btn-primary" @click="showUploadModal = true">Adicionar primeiro edital</button>
     </div>
 
-    <!-- Upload Modal -->
-    <EditalUploadModal 
-      v-if="showUploadModal" 
-      @close="showUploadModal = false"
-      @success="fetchEditais"
-    />
-  </DashboardLayout>
-</template>
+    <div v-else class="editais-grid" aria-live="polite">
+      <EditalCard v-for="edital in filteredEditais" :key="edital.id" :edital="edital" :isAdmin="isAdmin" :showFullActions="true" @view="viewEdital(edital.id)" @chat="chatAboutEdital(edital.id)" @deleted="handleDeleted(edital.id)" />
+    </div>
+
+    <EditalUploadModal v-if="showUploadModal" @close="showUploadModal = false" @success="fetchEditais" />
+   </DashboardLayout>
+ </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
@@ -162,149 +122,26 @@ watch(() => route.query.upload, (newVal) => {
 </script>
 
 <style scoped>
-.editais-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  background: var(--color-surface);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 0.625rem 1rem;
-  flex: 1;
-  max-width: 480px;
-  transition: all var(--transition-fast);
-}
-
-.search-box:focus-within {
-  border-color: var(--color-primary-500);
-  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
-}
-
-.search-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--color-gray-400);
-  margin-right: 0.75rem;
-  flex-shrink: 0;
-}
-
-.search-input {
-  border: none;
-  background: transparent;
-  font-size: 0.9375rem;
-  color: var(--color-text);
-  outline: none;
-  width: 100%;
-}
-
-.search-input::placeholder {
-  color: var(--color-gray-400);
-}
-
-.header-right-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-}
-
-.count-badge {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-gray-600);
-  background: var(--color-surface-2);
-  padding: 0.375rem 0.875rem;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border);
-}
-
-.btn-primary {
-  background: var(--color-primary-600);
-  color: white;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary:hover {
-  background: var(--color-primary-700);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-primary);
-}
-
-.btn-primary svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* Loading & Empty States */
-.loading-state,
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: var(--color-gray-500);
-}
-
-.empty-icon {
-  width: 64px;
-  height: 64px;
-  color: var(--color-gray-300);
-  margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-gray-700);
-  margin-bottom: 0.5rem;
-}
-
-.empty-state p {
-  font-size: 0.9375rem;
-  color: var(--color-gray-500);
-}
-
-.mt-4 {
-  margin-top: 1rem;
-}
-
-/* Grid */
-.editais-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.5rem;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .editais-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .editais-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .search-box {
-    max-width: none;
-  }
-  
-  .header-right-actions {
-    justify-content: space-between;
-  }
-}
+.page-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.75rem; }
+.eyebrow { margin: 0 0 0.5rem; color: var(--color-primary-700); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.page-intro h1 { margin: 0; color: var(--color-text); font-family: var(--font-display); font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 600; letter-spacing: -0.04em; line-height: 1.05; }
+.intro-copy { margin: 0.65rem 0 0; color: var(--color-text-secondary); font-size: 0.9rem; }
+.upload-button { flex-shrink: 0; }
+.upload-button svg { width: 18px; height: 18px; }
+.editais-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.search-box { display: flex; align-items: center; flex: 1; max-width: 540px; padding: 0.7rem 0.9rem; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
+.search-box:focus-within { border-color: var(--color-primary-500); box-shadow: var(--shadow-sm); }
+.search-icon { width: 18px; height: 18px; margin-right: 0.65rem; flex-shrink: 0; color: var(--color-text-muted); }
+.search-input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--color-text); font: inherit; font-size: 0.85rem; }
+.search-input::placeholder { color: var(--color-text-muted); }
+.count-badge { flex-shrink: 0; padding: 0.35rem 0.7rem; border: 1px solid var(--color-border); border-radius: var(--radius-full); background: var(--color-surface-2); color: var(--color-text-secondary); font-size: 0.75rem; font-weight: 700; }
+.state-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 260px; padding: 2rem; border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); color: var(--color-text-muted); text-align: center; }
+.state-panel p { margin: 0.7rem 0 0; font-size: 0.82rem; }
+.empty-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: var(--radius-lg); background: var(--color-surface-2); color: var(--color-text-muted); }
+.empty-icon svg { width: 24px; height: 24px; }
+.empty-state h2 { margin: 0.85rem 0 0.3rem; color: var(--color-text); font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
+.empty-state p { margin-bottom: 1rem; }
+.editais-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 700px) { .page-intro { align-items: flex-start; flex-direction: column; } .upload-button { width: 100%; } .editais-toolbar { align-items: stretch; flex-direction: column; } .search-box { max-width: none; } .count-badge { align-self: flex-start; } .editais-grid { grid-template-columns: 1fr; } }
 </style>

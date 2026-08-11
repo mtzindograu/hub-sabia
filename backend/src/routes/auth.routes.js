@@ -215,6 +215,48 @@ router.post('/acknowledge-plan', authMiddleware, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/auth/plan-mode
+ * @desc    Alternar entre o Plano da Página (créditos diários) e a chave própria
+ * @access  Privado
+ */
+router.post('/plan-mode', authMiddleware, async (req, res) => {
+  try {
+    const { mode } = req.body;
+
+    if (mode === 'free') {
+      await User.updateOne(
+        { _id: req.user.id },
+        { $set: { usingOwnApiKey: { active: false, provider: null, configuredAt: null } } }
+      );
+      return res.json({ success: true, data: { mode: 'free' }, message: 'Plano da página ativado — 20 créditos por dia' });
+    }
+
+    if (mode === 'own-key') {
+      // Precisa de pelo menos uma chave configurada
+      const user = await User.findById(req.user.id).select('+gemini_api_key +groq_api_key');
+      const provider = user?.gemini_api_key ? 'gemini' : (user?.groq_api_key ? 'groq' : null);
+      if (!provider) {
+        return res.status(400).json({
+          success: false,
+          error: 'Configure uma chave de IA antes de usar este modo',
+          code: 'NO_KEY_CONFIGURED'
+        });
+      }
+      await User.updateOne(
+        { _id: req.user.id },
+        { $set: { usingOwnApiKey: { active: true, provider, configuredAt: new Date() } } }
+      );
+      return res.json({ success: true, data: { mode: 'own-key', provider }, message: `Chave própria ativada (${provider})` });
+    }
+
+    return res.status(400).json({ success: false, error: 'Modo inválido', code: 'INVALID_MODE' });
+  } catch (error) {
+    console.error('[AUTH] Plan mode error:', error.message);
+    res.status(500).json({ success: false, error: 'Erro ao alterar o modo de uso' });
+  }
+});
+
+/**
  * @route   DELETE /api/auth/users/:id
  * @desc    Deletar usuário (apenas admin)
  * @access  Admin

@@ -164,7 +164,9 @@
       <main class="chat-main">
         <PlanSelectionModal 
           :is-visible="isPlanSelectionModalVisible" 
-          @select-plan="handleAcknowledgePlan"
+          :using-own-key="!!userData?.usingOwnApiKey?.active"
+          :has-own-key="!!userData?.has_gemini_key || !!userData?.has_groq_key"
+          @select-plan="handleSelectPlan"
         />
 
         <div v-if="isLoggedIn && userData" class="chat-header-actions">
@@ -373,6 +375,7 @@ import {
   getConversations,
   getConversationMessages,
   acknowledgePlan,
+  setPlanMode,
   getCurrentUser,
 } from "../services/api.js";
 import { error as showError, success as showSuccess } from "../utils/toast.js";
@@ -465,16 +468,26 @@ function checkUserKey() {
   isPlanSelectionModalVisible.value = isLoggedIn.value && !isPlanAcknowledged.value;
 }
 
-async function handleAcknowledgePlan() {
+async function handleSelectPlan(mode) {
   try {
+    // Marca o plano como aceito (não reaparece a cada visita) e troca o modo
     await acknowledgePlan();
+    await setPlanMode(mode);
     await refreshUserData();
     isPlanSelectionModalVisible.value = false;
-    isPlanAcknowledged.value = true;
-    showSuccess('Plano atualizado com sucesso!');
+    showSuccess(
+      mode === 'free'
+        ? 'Plano da página ativado — 20 créditos por dia'
+        : 'Chave própria ativada — uso ilimitado'
+    );
   } catch (err) {
-    console.error("Error acknowledging plan:", err);
-    showError('Erro ao atualizar plano.');
+    if (err.code === 'NO_KEY_CONFIGURED') {
+      isPlanSelectionModalVisible.value = false;
+      router.push('/perfil');
+    } else {
+      console.error("Error switching plan:", err);
+      showError(err.message || 'Erro ao alterar o modo de uso.');
+    }
   }
 }
 

@@ -3,31 +3,49 @@
     <div class="plan-modal">
       <div class="plan-modal-header">
         <h1>HubSabia IA</h1>
-        <p>Escolha como você quer usar</p>
+        <p>Escolha como você quer usar o HubSabia</p>
       </div>
 
       <div class="plan-options">
-        <!-- Plano Gratuito -->
-        <div class="plan-option free">
-          <span class="plan-option-label">Recomendado</span>
-          <h3>Plano Gratuito</h3>
-          <p>20 créditos por dia, renovação automática.</p>
-          <button class="btn btn-primary btn-block" @click="$emit('select-plan', 'free')">
-            Utilizar gratuitamente
-          </button>
+        <!-- Plano da Página (créditos diários) -->
+        <div class="plan-option free" :class="{ selected: !usingOwnKey }">
+          <span class="plan-option-label">Plano da página</span>
+          <h3>Créditos diários</h3>
+          <p>20 créditos por dia, renovação automática. Sem configurar nada.</p>
+          <button
+            v-if="!usingOwnKey"
+            class="btn btn-primary btn-block"
+            disabled
+          >Em uso</button>
+          <button
+            v-else
+            class="btn btn-primary btn-block"
+            @click="$emit('select-plan', 'free')"
+          >Usar créditos diários</button>
         </div>
 
         <!-- Chave Própria -->
-        <div class="plan-option">
-          <h3>Sua Chave de IA</h3>
-          <p>Use sua conta para não ter limite de créditos.</p>
-          <router-link to="/perfil" class="btn btn-outline btn-block">
+        <div class="plan-option" :class="{ selected: usingOwnKey }">
+          <span class="plan-option-label">Minha chave</span>
+          <h3>Chave de IA própria</h3>
+          <p>Use sua conta Gemini ou Groq para não ter limite de créditos.</p>
+          <button
+            v-if="usingOwnKey"
+            class="btn btn-outline btn-block"
+            disabled
+          >Em uso</button>
+          <button
+            v-else-if="hasOwnKey"
+            class="btn btn-outline btn-block"
+            @click="$emit('select-plan', 'own-key')"
+          >Usar minha chave</button>
+          <router-link v-else to="/perfil" class="btn btn-outline btn-block">
             Configurar minha chave
           </router-link>
         </div>
       </div>
 
-      <p class="plan-modal-footer">IA padrão: Gemini 2.5 Flash</p>
+      <p class="plan-modal-footer">IA padrão: Gemini 2.5 Flash · chave própria = uso ilimitado</p>
     </div>
   </div>
 </template>
@@ -37,6 +55,14 @@ import { defineProps, defineEmits } from 'vue';
 
 defineProps({
   isVisible: {
+    type: Boolean,
+    default: false
+  },
+  usingOwnKey: {
+    type: Boolean,
+    default: false
+  },
+  hasOwnKey: {
     type: Boolean,
     default: false
   }
@@ -97,7 +123,7 @@ defineEmits(['select-plan']);
   gap: 0.5rem;
 }
 
-.plan-option.free {
+.plan-option.selected {
   border-color: var(--color-primary-500);
   box-shadow: var(--shadow-primary);
 }

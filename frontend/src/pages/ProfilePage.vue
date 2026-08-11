@@ -91,6 +91,33 @@
               </div>
             </div>
 
+            <div class="plan-mode-switcher" role="radiogroup" aria-label="Modo de uso do HubSabia">
+              <button
+                type="button"
+                class="plan-mode-option"
+                :class="{ selected: !ownKeyActive }"
+                @click="switchPlanMode('free')"
+              >
+                <span class="plan-mode-radio" aria-hidden="true"></span>
+                <span class="plan-mode-copy">
+                  <strong>Plano da página</strong>
+                  <small>20 créditos por dia · renovação automática</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="plan-mode-option"
+                :class="{ selected: ownKeyActive }"
+                @click="switchPlanMode('own-key')"
+              >
+                <span class="plan-mode-radio" aria-hidden="true"></span>
+                <span class="plan-mode-copy">
+                  <strong>Minha chave de IA</strong>
+                  <small>Uso ilimitado com Gemini ou Groq</small>
+                </span>
+              </button>
+            </div>
+
             <div class="plan-card" :class="{ 'own-key': ownKeyActive }">
               <div class="plan-header">
                 <div class="plan-info">
@@ -105,7 +132,7 @@
                     <span v-if="ownKeyActive" class="plan-status">Chave própria ativa</span>
                   </div>
                   <p class="plan-ia">
-                    {{ ownKeyActive ? `Chave própria: ${preferredProviderLabel}` : `IA utilizada: ${preferredProviderLabel}` }}
+                    {{ ownKeyActive ? `Chave própria: ${ownKeyProviderLabel}` : `IA utilizada: ${preferredProviderLabel}` }}
                   </p>
                 </div>
                 <button type="button" class="btn-toggle" @click="scrollToProviders">
@@ -326,7 +353,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import ProviderLogo from '../components/ProviderLogo.vue'
-import { logout, getCurrentUser, updateProviderConfig, updatePreferredProvider, updateProfile } from '../services/api.js'
+import { logout, getCurrentUser, updateProviderConfig, updatePreferredProvider, updateProfile, setPlanMode } from '../services/api.js'
 import { info, success, error as toastError } from '../utils/toast.js'
 
 const router = useRouter()
@@ -353,6 +380,10 @@ const hasGeminiKey = computed(() => !!currentUser.value?.has_gemini_key)
 const hasGroqKey = computed(() => !!currentUser.value?.has_groq_key)
 const ownKeyActive = computed(() => !!currentUser.value?.usingOwnApiKey?.active)
 const preferredProviderLabel = computed(() => preferredProvider.value === 'groq' ? 'Groq' : 'Gemini')
+const ownKeyProviderLabel = computed(() => {
+  const p = currentUser.value?.usingOwnApiKey?.provider
+  return p === 'groq' ? 'Groq' : p === 'gemini' ? 'Gemini' : preferredProviderLabel.value
+})
 const connectedProviderCount = computed(() => Number(hasGeminiKey.value) + Number(hasGroqKey.value))
 
 const creditPercentage = computed(() => {
@@ -445,6 +476,34 @@ async function setPreferredProvider(provider) {
   } catch (err) {
     preferredProvider.value = previous
     toastError(err.message || 'Erro ao salvar preferência')
+  }
+}
+
+async function switchPlanMode(mode) {
+  if (mode === 'own-key' && !ownKeyActive.value && connectedProviderCount.value === 0) {
+    toastError('Configure uma chave Gemini ou Groq primeiro.')
+    scrollToProviders()
+    return
+  }
+  if (mode === (ownKeyActive.value ? 'own-key' : 'free')) return // já está neste modo
+  loading.value = true
+  try {
+    const response = await setPlanMode(mode)
+    if (response.success) {
+      success(response.message || (mode === 'free' ? 'Plano da página ativado' : 'Chave própria ativada'))
+      await fetchUserData()
+    } else {
+      toastError(response.message || 'Erro ao alterar o modo de uso')
+    }
+  } catch (err) {
+    if (err.code === 'NO_KEY_CONFIGURED') {
+      toastError('Configure uma chave Gemini ou Groq primeiro.')
+      scrollToProviders()
+    } else {
+      toastError(err.message || 'Erro ao alterar o modo de uso')
+    }
+  } finally {
+    loading.value = false
   }
 }
 
@@ -592,6 +651,18 @@ onMounted(async () => {
 .plan-badge { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--color-gray-900); font-size: 0.92rem; font-weight: 800; }
 .plan-status { padding: 0.3rem 0.55rem; color: var(--color-primary-700); background: var(--color-primary-100); }
 .plan-ia { margin: 0.45rem 0 0; color: var(--color-text-muted); font-size: 0.78rem; }
+
+/* Seletor de modo de uso (plano da página vs chave própria) */
+.plan-mode-switcher { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin: 0 0 1.25rem; }
+.plan-mode-option { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1rem; text-align: left; color: var(--color-text-secondary); background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-lg); cursor: pointer; transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast); }
+.plan-mode-option:hover { border-color: var(--color-primary-300); color: var(--color-primary-700); }
+.plan-mode-option.selected { border-color: var(--color-primary-500); background: var(--color-primary-50); color: var(--color-primary-700); box-shadow: var(--shadow-sm); }
+.plan-mode-radio { width: 14px; height: 14px; flex: 0 0 auto; border: 2px solid currentColor; border-radius: 50%; box-shadow: inset 0 0 0 3px var(--color-surface-2); }
+.plan-mode-option.selected .plan-mode-radio { background: var(--color-primary-600); box-shadow: inset 0 0 0 3px var(--color-primary-50); }
+.plan-mode-copy strong, .plan-mode-copy small { display: block; }
+.plan-mode-copy strong { font-size: 0.82rem; }
+.plan-mode-copy small { margin-top: 0.15rem; color: var(--color-text-muted); font-size: 0.68rem; line-height: 1.4; }
+@media (max-width: 480px) { .plan-mode-switcher { grid-template-columns: 1fr; } }
 .btn-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; flex-shrink: 0; padding: 0.6rem 0.85rem; color: var(--color-gray-700); font: 700 0.75rem var(--font-body); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); cursor: pointer; transition: transform var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast); }
 .btn-toggle:hover { color: var(--color-primary-700); background: var(--color-primary-50); border-color: var(--color-primary-300); transform: translateY(-1px); }
 .credits-progress { margin-top: 1.35rem; }

@@ -81,7 +81,10 @@ router.post("/pergunta", authMiddleware, async (req, res) => {
 
     // Fetch user with API Keys and preference
     const user = await User.findById(req.user._id).select('+gemini_api_key +groq_api_key');
-    preferredProvider = user?.preferred_provider || 'gemini';
+    // Modo chave própria ativa: usa o provider da chave; senão a preferência do usuário
+    preferredProvider = user?.usingOwnApiKey?.active && user?.usingOwnApiKey?.provider
+      ? user.usingOwnApiKey.provider
+      : (user?.preferred_provider || 'gemini');
 
     if (preferredProvider === 'groq') {
       userApiKey = user?.groq_api_key;
@@ -232,7 +235,10 @@ router.post("/pergunta/stream", authMiddleware, async (req, res) => {
     let preferredProvider = 'gemini';
 
     const user = await User.findById(req.user._id).select('+gemini_api_key +groq_api_key');
-    preferredProvider = user?.preferred_provider || 'gemini';
+    // Modo chave própria ativa: usa o provider da chave; senão a preferência do usuário
+    preferredProvider = user?.usingOwnApiKey?.active && user?.usingOwnApiKey?.provider
+      ? user.usingOwnApiKey.provider
+      : (user?.preferred_provider || 'gemini');
 
     if (preferredProvider === 'groq') {
       userApiKey = user?.groq_api_key;

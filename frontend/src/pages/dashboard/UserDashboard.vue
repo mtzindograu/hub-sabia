@@ -1,187 +1,96 @@
 <template>
   <DashboardLayout page-title="Dashboard">
-    <!-- Boas-vindas -->
-    <div class="welcome-section">
-      <div class="welcome-content">
-        <div class="welcome-text">
-          <h1 class="welcome-title">Olá, {{ userFirstName }}! 👋</h1>
-          <p class="welcome-subtitle">Use a inteligência artificial para explorar editais acadêmicos e tirar suas dúvidas</p>
-        </div>
-        <div class="welcome-actions">
-          <router-link to="/chat" class="btn btn-primary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Fazer uma Pergunta
-          </router-link>
-        </div>
+    <section class="welcome-section" aria-labelledby="dashboard-welcome-title">
+      <div class="welcome-copy">
+        <p class="eyebrow">Seu espaço de pesquisa · {{ hoje }}</p>
+        <h1 id="dashboard-welcome-title">Olá, {{ userFirstName }}.</h1>
+        <p class="welcome-subtitle">Encontre oportunidades acadêmicas, compreenda cada detalhe e avance com mais clareza.</p>
       </div>
-    </div>
-
-    <!-- Stats Grid -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-icon icon-primary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ totalEditais }}</span>
-          <span class="stat-label">Editais Disponíveis</span>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon icon-success">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ totalTrechos }}</span>
-          <span class="stat-label">Trechos Indexados</span>
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-icon icon-info">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-        </div>
-        <div class="stat-content">
-          <span class="stat-value">{{ hoje }}</span>
-          <span class="stat-label">Hoje</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Ações Rápidas -->
-    <div class="section">
-      <h2 class="section-title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      <router-link to="/chat" class="btn btn-primary welcome-action">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        Ações Rápidas
-      </h2>
-      <div class="quick-actions-grid">
-        <router-link to="/editais" class="quick-action-card">
-          <div class="action-icon-wrapper action-green">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="m21 21-4.35-4.35"/>
-            </svg>
-          </div>
-          <div class="action-text">
-            <span class="action-title">Ver Editais</span>
-            <span class="action-desc">Explore todos os editais disponíveis</span>
-          </div>
-          <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </router-link>
+        Perguntar à IA
+      </router-link>
+    </section>
 
-        <router-link to="/chat" class="quick-action-card">
-          <div class="action-icon-wrapper action-blue">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </div>
-          <div class="action-text">
-            <span class="action-title">Chat com IA</span>
-            <span class="action-desc">Faça perguntas sobre os editais</span>
-          </div>
-          <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </router-link>
-
-        <router-link to="/perfil" class="quick-action-card">
-          <div class="action-icon-wrapper action-purple">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-          </div>
-          <div class="action-text">
-            <span class="action-title">Meu Perfil</span>
-            <span class="action-desc">Gerencie suas informações</span>
-          </div>
-          <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </router-link>
-      </div>
-    </div>
-
-    <!-- Editais Recentes -->
-    <div class="section">
-      <div class="section-header">
-        <h2 class="section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          Editais Recentes
-        </h2>
-        <router-link to="/editais" class="view-all-link">
-          Ver todos
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </router-link>
-      </div>
-
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>Carregando editais...</p>
-      </div>
-
-      <div v-else-if="editaisRecentes.length === 0" class="empty-state">
-        <div class="empty-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <section class="stats-grid" aria-label="Resumo da conta">
+      <article class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
         </div>
-        <h3>Nenhum edital disponível</h3>
-        <p>Os editais aparecerão aqui quando forem adicionados ao sistema</p>
-      </div>
-
-      <div v-else class="editais-list">
-        <router-link
-          v-for="edital in editaisRecentes"
-          :key="edital.id"
-          :to="`/dashboard/editais/${edital.id}`"
-          class="edital-item"
-        >
-          <div class="edital-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-          </div>
-          <div class="edital-info">
-            <span class="edital-title">{{ edital.titulo }}</span>
-            <span class="edital-meta">
-              <span class="year-badge">{{ edital.ano }}</span>
-              <span>{{ edital.chunkCount || 0 }} trechos</span>
-            </span>
-          </div>
-          <svg class="edital-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="9 18 15 12 9 6"/>
+        <div class="stat-content"><span class="stat-value">{{ totalEditais }}</span><span class="stat-label">Editais disponíveis</span></div>
+      </article>
+      <article class="stat-card">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
           </svg>
+        </div>
+        <div class="stat-content"><span class="stat-value">{{ totalTrechos }}</span><span class="stat-label">Trechos indexados</span></div>
+      </article>
+      <article class="stat-card stat-card-date">
+        <div class="stat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+        </div>
+        <div class="stat-content"><span class="stat-value">{{ hoje }}</span><span class="stat-label">Hoje no HubSabia</span></div>
+      </article>
+    </section>
+
+    <section class="section quick-section" aria-labelledby="quick-actions-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Comece por aqui</p><h2 id="quick-actions-title">Acesso rápido</h2></div>
+      </div>
+      <div class="quick-actions-grid">
+        <router-link to="/dashboard/editais" class="quick-action-card">
+          <span class="action-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          </span>
+          <span class="action-text"><strong>Explorar editais</strong><small>Veja todas as oportunidades</small></span>
+          <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </router-link>
+        <router-link to="/chat" class="quick-action-card">
+          <span class="action-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </span>
+          <span class="action-text"><strong>Conversar com a IA</strong><small>Tire dúvidas sobre um edital</small></span>
+          <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </router-link>
+        <router-link to="/perfil" class="quick-action-card">
+          <span class="action-icon-wrapper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <span class="action-text"><strong>Meu perfil</strong><small>Atualize suas preferências</small></span>
+          <svg class="action-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </router-link>
       </div>
-    </div>
-  </DashboardLayout>
-</template>
+    </section>
+
+    <section class="section recent-section" aria-labelledby="recent-title">
+      <div class="section-heading section-heading-row">
+        <div><p class="eyebrow">Atualizados recentemente</p><h2 id="recent-title">Editais recentes</h2></div>
+        <router-link to="/dashboard/editais" class="view-all-link">Ver todos <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></router-link>
+      </div>
+      <div v-if="loading" class="state-panel"><div class="spinner"></div><p>Carregando editais...</p></div>
+      <div v-else-if="editaisRecentes.length === 0" class="state-panel empty-state">
+        <div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <h3>Nenhum edital disponível</h3><p>Os editais aparecerão aqui quando forem adicionados ao sistema.</p>
+      </div>
+      <div v-else class="editais-list">
+        <router-link v-for="edital in editaisRecentes" :key="edital.id" :to="`/dashboard/editais/${edital.id}`" class="edital-item">
+          <span class="edital-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+          <span class="edital-info"><strong class="edital-title">{{ edital.titulo }}</strong><span class="edital-meta"><span class="year-badge">{{ edital.ano }}</span><span>{{ edital.chunkCount || 0 }} trechos indexados</span></span></span>
+          <svg class="edital-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </router-link>
+      </div>
+    </section>
+   </DashboardLayout>
+ </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
@@ -227,427 +136,70 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Boas-vindas */
 .welcome-section {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
   margin-bottom: 2rem;
-}
-
-.welcome-content {
-  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+  padding: 2rem;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
-  padding: 2rem 2.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.welcome-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 300px;
-  height: 300px;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  transform: translate(50px, -50px);
-}
-
-.welcome-text {
-  position: relative;
-  z-index: 1;
-}
-
-.welcome-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: white;
-  margin: 0 0 0.5rem;
-}
-
-.welcome-subtitle {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.85);
-  margin: 0;
-  max-width: 500px;
-}
-
-.welcome-actions {
-  position: relative;
-  z-index: 1;
-}
-
-.welcome-actions .btn {
   background: var(--color-surface);
-  color: var(--color-primary-700);
-  font-weight: 600;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-md);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-decoration: none;
-  transition: all 150ms ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
-.welcome-actions .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-  background: var(--color-gray-50);
-}
-...
-.action-icon-wrapper svg {
-  width: 22px;
-  height: 22px;
-  color: var(--color-text-inverse);
-}
-/* Stats Grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
+.welcome-copy { max-width: 680px; }
+.eyebrow { margin: 0 0 0.55rem; color: var(--color-primary-700); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.welcome-copy h1 { margin: 0 0 0.65rem; color: var(--color-text); font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); font-weight: 600; letter-spacing: -0.045em; line-height: 1.05; }
+.welcome-subtitle { max-width: 560px; margin: 0; color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.7; }
+.welcome-action { flex-shrink: 0; }
 
-.stat-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  border: 1px solid var(--color-border);
-  transition: box-shadow 150ms ease;
-}
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2.5rem; }
+.stat-card { display: flex; align-items: center; gap: 1rem; min-width: 0; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); box-shadow: var(--shadow-sm); transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base); }
+.stat-card:hover { border-color: var(--color-primary-300); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.stat-icon { width: 42px; height: 42px; display: grid; place-items: center; flex-shrink: 0; border-radius: var(--radius-lg); background: var(--color-primary-50); color: var(--color-primary-700); }
+.stat-icon svg { width: 20px; height: 20px; }
+.stat-content { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.stat-value { overflow: hidden; color: var(--color-text); font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.stat-label { color: var(--color-text-muted); font-size: 0.75rem; font-weight: 600; }
 
-.stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
+.section { margin-bottom: 2.5rem; }
+.section-heading { margin-bottom: 1rem; }
+.section-heading h2 { margin: 0; color: var(--color-text); font-family: var(--font-display); font-size: 1.55rem; font-weight: 600; letter-spacing: -0.025em; }
+.section-heading-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.quick-actions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.quick-action-card { display: flex; align-items: center; gap: 0.85rem; min-width: 0; padding: 1.1rem; border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); color: var(--color-text); text-decoration: none; transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base); }
+.quick-action-card:hover { border-color: var(--color-primary-300); box-shadow: var(--shadow-md); color: var(--color-text); transform: translateY(-2px); }
+.action-icon-wrapper { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; border-radius: var(--radius-lg); background: var(--color-primary-50); color: var(--color-primary-700); }
+.action-icon-wrapper svg { width: 19px; height: 19px; }
+.action-text { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 0.2rem; }
+.action-text strong { overflow: hidden; font-size: 0.85rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.action-text small { overflow: hidden; color: var(--color-text-muted); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
+.action-arrow { width: 17px; height: 17px; flex-shrink: 0; color: var(--color-text-muted); transition: transform var(--transition-fast), color var(--transition-fast); }
+.quick-action-card:hover .action-arrow { color: var(--color-primary-600); transform: translateX(3px); }
+.view-all-link { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--color-primary-700); font-size: 0.8rem; font-weight: 700; text-decoration: none; }
+.view-all-link:hover { color: var(--color-primary-600); }
+.view-all-link svg { width: 16px; height: 16px; }
 
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+.editais-list { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+.edital-item { display: flex; align-items: center; gap: 1rem; min-width: 0; padding: 0.85rem 0.9rem; border: 1px solid transparent; border-radius: var(--radius-lg); color: var(--color-text); text-decoration: none; transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast); }
+.edital-item:hover { border-color: var(--color-primary-200); background: var(--color-primary-50); color: var(--color-text); transform: translateY(-1px); }
+.edital-icon { width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; border-radius: var(--radius-lg); background: var(--color-surface-2); color: var(--color-primary-700); }
+.edital-icon svg { width: 19px; height: 19px; }
+.edital-info { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 0.25rem; }
+.edital-title { overflow: hidden; color: var(--color-text); font-size: 0.875rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.edital-meta { display: flex; align-items: center; gap: 0.55rem; color: var(--color-text-muted); font-size: 0.72rem; }
+.year-badge { padding: 0.15rem 0.45rem; border-radius: var(--radius-sm); background: var(--color-primary-50); color: var(--color-primary-700); font-size: 0.68rem; font-weight: 800; }
+.edital-arrow { width: 18px; height: 18px; flex-shrink: 0; color: var(--color-text-muted); }
+.state-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 180px; padding: 2rem; border: 1px solid var(--color-border); border-radius: var(--radius-xl); background: var(--color-surface); color: var(--color-text-muted); text-align: center; }
+.state-panel p { margin: 0.75rem 0 0; font-size: 0.82rem; }
+.empty-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: var(--radius-lg); background: var(--color-surface-2); color: var(--color-text-muted); }
+.empty-icon svg { width: 22px; height: 22px; }
+.empty-state h3 { margin: 0.8rem 0 0.3rem; color: var(--color-text); font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; }
+.empty-state p { max-width: 340px; }
 
-.stat-icon svg {
-  width: 22px;
-  height: 22px;
-  color: white;
-}
-
-.icon-primary {
-  background: var(--color-primary-600);
-}
-
-.icon-success {
-  background: var(--color-success-500);
-}
-
-.icon-info {
-  background: var(--color-info-500);
-}
-
-.stat-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-gray-900);
-  line-height: 1.2;
-}
-
-.stat-label {
-  font-size: 0.8125rem;
-  color: var(--color-gray-500);
-}
-
-/* Sections */
-.section {
-  margin-bottom: 2rem;
-}
-
-.section-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--color-gray-900);
-  margin: 0 0 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.section-title svg {
-  width: 20px;
-  height: 20px;
-  color: var(--color-primary-600);
-}
-
-/* Quick Actions */
-.quick-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.quick-action-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-border);
-  text-decoration: none;
-  transition: all 150ms ease;
-}
-
-.quick-action-card:hover {
-  border-color: var(--color-primary-300);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  transform: translateY(-2px);
-}
-
-.action-icon-wrapper {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.action-icon-wrapper svg {
-  width: 22px;
-  height: 22px;
-  color: white;
-}
-
-.action-green { background: var(--color-primary-600); }
-.action-blue { background: var(--color-info-500); }
-.action-purple { background: #8b5cf6; }
-
-.action-text {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.action-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--color-gray-900);
-}
-
-.action-desc {
-  font-size: 0.8125rem;
-  color: var(--color-gray-500);
-}
-
-.action-arrow {
-  width: 18px;
-  height: 18px;
-  color: var(--color-gray-400);
-  flex-shrink: 0;
-  transition: transform 150ms ease, color 150ms ease;
-}
-
-.quick-action-card:hover .action-arrow {
-  transform: translateX(4px);
-  color: var(--color-primary-600);
-}
-
-/* Section Header */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.view-all-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--color-primary-600);
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition: color 150ms ease;
-}
-
-.view-all-link svg {
-  width: 16px;
-  height: 16px;
-}
-
-.view-all-link:hover {
-  color: var(--color-primary-700);
-}
-
-/* Editais List */
-.editais-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-border);
-  padding: 0.75rem;
-}
-
-.edital-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.125rem;
-  border-radius: var(--radius-lg);
-  text-decoration: none;
-  color: inherit;
-  transition: background 150ms ease;
-}
-
-.edital-item:hover {
-  background: var(--color-surface-2);
-}
-
-.edital-icon {
-  width: 42px;
-  height: 42px;
-  background: var(--color-primary-50);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary-600);
-  flex-shrink: 0;
-}
-
-.edital-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.edital-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.edital-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--color-gray-900);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.edital-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin-top: 0.25rem;
-}
-
-.year-badge {
-  background: var(--color-primary-50);
-  color: var(--color-primary-700);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.6875rem;
-  font-weight: 600;
-}
-
-.edital-meta span:last-child {
-  font-size: 0.75rem;
-  color: var(--color-gray-500);
-}
-
-.edital-arrow {
-  width: 18px;
-  height: 18px;
-  color: var(--color-gray-400);
-  flex-shrink: 0;
-}
-
-/* Loading & Empty States */
-.loading-state,
-.empty-state {
-  text-align: center;
-  padding: 3rem 1.5rem;
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  border: 1px solid var(--color-border);
-}
-
-.empty-icon svg {
-  width: 56px;
-  height: 56px;
-  color: var(--color-gray-300);
-  margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--color-gray-700);
-  margin: 0 0 0.375rem;
-}
-
-.empty-state p {
-  font-size: 0.875rem;
-  color: var(--color-gray-500);
-  margin: 0;
-}
-
-/* Responsivo */
-@media (max-width: 1024px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .quick-actions-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .welcome-content {
-    flex-direction: column;
-    text-align: center;
-    padding: 1.75rem 1.5rem;
-  }
-
-  .welcome-subtitle {
-    max-width: none;
-  }
-
-  .welcome-title {
-    font-size: 1.5rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .welcome-title {
-    font-size: 1.375rem;
-  }
-
-  .stat-value {
-    font-size: 1.25rem;
-  }
-}
+@media (max-width: 900px) { .quick-actions-grid { grid-template-columns: 1fr; } }
+@media (max-width: 720px) { .welcome-section { align-items: flex-start; flex-direction: column; padding: 1.5rem; } .welcome-action { width: 100%; } .stats-grid { grid-template-columns: 1fr; } .section-heading-row { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 480px) { .edital-meta { align-items: flex-start; flex-direction: column; gap: 0.2rem; } }
 </style>
