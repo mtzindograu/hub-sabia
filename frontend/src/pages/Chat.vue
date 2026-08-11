@@ -173,30 +173,8 @@
            <CurrentPlanCard :user="userData" @open-modal="isPlanSelectionModalVisible = true" />
         </div>
 
-        <!-- Credits Exhausted Modal -->
-        <div v-if="isExhaustedModalVisible" class="credit-modal-overlay">
-          <div class="credit-modal">
-            <div class="credit-modal-header">
-              <h1>Créditos de hoje usados</h1>
-              <p>Você usou os 20 créditos gratuitos disponíveis.</p>
-            </div>
-            <div class="credit-modal-body">
-              <p class="credit-modal-note">
-                Sua cota renova automaticamente em 24h. Sem esperar? Configure sua
-                própria chave de IA para uso ilimitado.
-              </p>
-              <router-link to="/perfil" class="btn btn-primary btn-block">
-                Usar minha chave de IA
-              </router-link>
-              <button class="btn btn-ghost btn-block" @click="isExhaustedModalVisible = false">
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-
         <!-- Auth Gate: visitantes e sessões expiradas não usam a IA -->
-        <div v-else-if="!isLoggedIn || authGateVisible" class="auth-gate">
+        <div v-if="!isLoggedIn || authGateVisible" class="auth-gate">
           <div class="auth-gate-card">
             <div class="auth-gate-icon">
               <svg
@@ -399,7 +377,6 @@ const editaisLoaded = ref(false);
 const isLoggedIn = ref(false);
 const userData = ref(null);
 const isPlanSelectionModalVisible = ref(false);
-const isExhaustedModalVisible = ref(false);
 const isPlanAcknowledged = ref(true);
 const authGateVisible = ref(false);
 
@@ -582,6 +559,20 @@ async function sendMessage() {
   const question = userInput.value.trim();
   if (!question || loading.value) return;
 
+  // Bloqueio local: sem créditos → erro no chat, NÃO faz a requisição
+  if (
+    userData.value &&
+    !userData.value.usingOwnApiKey?.active &&
+    (userData.value.remainingCredits ?? 20) <= 0
+  ) {
+    messages.value.push({
+      type: "error",
+      content:
+        "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou configure sua própria chave de IA no perfil para uso ilimitado.",
+    });
+    return;
+  }
+
   // Add user message
   messages.value.push({
     type: "user",
@@ -633,7 +624,11 @@ async function sendMessage() {
       authGateVisible.value = true;
       isLoggedIn.value = false;
     } else if (error.code === "CREDITS_EXHAUSTED") {
-      isExhaustedModalVisible.value = true;
+      messages.value.push({
+        type: "error",
+        content:
+          "Você usou os 20 créditos de hoje. Eles renovam automaticamente — ou configure sua própria chave de IA no perfil para uso ilimitado.",
+      });
     } else {
       showError(error.message || "Erro ao processar pergunta");
       messages.value.push({
@@ -1328,57 +1323,6 @@ function autoResize() {
   font-size: 0.875rem;
   color: var(--color-text-secondary);
   line-height: 1.5;
-  margin: 0 0 0.5rem;
-}
-
-/* ===== Modal de créditos esgotados ===== */
-.credit-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--color-bg);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.credit-modal {
-  max-width: 400px;
-  width: 100%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: 2rem 1.75rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.credit-modal-header h1 {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0 0 0.375rem;
-}
-
-.credit-modal-header p {
-  color: var(--color-text-secondary);
-  font-size: 0.9375rem;
-  margin: 0;
-}
-
-.credit-modal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.credit-modal-note {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--color-text-secondary);
   margin: 0 0 0.5rem;
 }
 </style>

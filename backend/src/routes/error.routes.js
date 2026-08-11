@@ -4,17 +4,27 @@
  */
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import ErrorLog from '../models/ErrorLog.js';
 import { optionalAuthMiddleware } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
+
+// Anti-abuso de armazenamento: o endpoint é público e não autenticado
+const errorLogLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitas requisições.' },
+});
 
 /**
  * @route   POST /api/logs/error
  * @desc    Log an error from the frontend
  * @access  Public (Optional Auth)
  */
-router.post('/', optionalAuthMiddleware, async (req, res) => {
+router.post('/', errorLogLimiter, optionalAuthMiddleware, async (req, res) => {
   try {
     const { 
       mensagem_erro, 

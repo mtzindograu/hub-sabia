@@ -5,6 +5,7 @@
 
 import express from "express";
 import mongoose from "mongoose";
+import rateLimit from "express-rate-limit";
 import { processQuestion, retrieveContext } from "../services/rag.service.js";
 import { creditsService } from "../services/credits.service.js";
 import { GEMINI_MODELS } from "../services/gemini.service.js";
@@ -20,12 +21,21 @@ const router = express.Router();
 
 const isValidObjectId = (v) => mongoose.Types.ObjectId.isValid(v);
 
+// Anti-abuso: cada pergunta custa (IA + créditos) — limite por IP
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: "Muitas perguntas em sequência. Aguarde um instante." },
+});
+
 /**
  * @route   POST /api/chat/pergunta
  * @desc    Ask a question about editais
  * @access  Private (requer login — anônimos são bloqueados no frontend e aqui)
  */
-router.post("/pergunta", authMiddleware, async (req, res) => {
+router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
   const startTime = Date.now();
   let trimmedQuestion = "";
   let campus_id = req.body.campus_id || null;
@@ -194,7 +204,7 @@ router.post("/pergunta", authMiddleware, async (req, res) => {
  * @desc    Ask a question with streaming response (optional)
  * @access  Public (Optional Auth)
  */
-router.post("/pergunta/stream", authMiddleware, async (req, res) => {
+router.post("/pergunta/stream", chatLimiter, authMiddleware, async (req, res) => {
   const startTime = Date.now();
   let campus_id = req.body.campus_id || null;
   let conversation_id = req.body.conversationId || null;

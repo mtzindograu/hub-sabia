@@ -636,7 +636,7 @@ onMounted(async () => {
 .email-value { font-family: var(--font-body); }
 
 .profile-section { margin-top: 2.5rem; padding-top: 2.25rem; border-top: 1px solid var(--color-border); scroll-margin-top: 1rem; }
-.section-heading { display: flex; align-items: center; gap: 0.75rem; }
+.section-heading { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
 .section-heading-spread { justify-content: space-between; }
 .section-heading-copy { display: flex; align-items: center; gap: 0.75rem; }
 .section-title { margin: 0; font-size: 1.55rem; line-height: 1; letter-spacing: -0.02em; }

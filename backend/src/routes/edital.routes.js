@@ -32,7 +32,8 @@ const upload = multer({
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
-    // ACEITA APENAS PDF
+    // ACEITA APENAS PDF (magic bytes são verificados no handler — o buffer
+    // só existe após o stream, não no fileFilter)
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
@@ -85,15 +86,26 @@ router.post("/upload", authMiddleware, isAdmin, uploadMiddleware, async (req, re
       });
     }
 
-    // Verificar se é PDF (caso tenha arquivo)
+    // Verificar se é PDF (caso tenha arquivo) — inclui magic bytes (%PDF),
+    // pois o MIME declarado pelo cliente pode ser forjado
+    const isPDF = !!(req.file && req.file.mimetype === 'application/pdf');
     if (req.file && req.file.mimetype !== 'application/pdf') {
       return res.status(400).json({
         success: false,
         error: "Apenas arquivos PDF são permitidos",
       });
     }
-
-    const isPDF = req.file && req.file.mimetype === 'application/pdf';
+    if (req.file) {
+      const buf = req.file.buffer;
+      const magicOk = buf && buf.length >= 5 &&
+        buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46; // %PDF
+      if (!magicOk) {
+        return res.status(400).json({
+          success: false,
+          error: "O arquivo enviado não é um PDF válido",
+        });
+      }
+    }
 
     // Step 1: Save file (if PDF provided)
     console.log("[API] Step 1: Saving file...");

@@ -7,6 +7,7 @@
 
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -35,6 +36,14 @@ const PORT = process.env.PORT || 3001;
 // ============================================
 // MIDDLEWARE CONFIGURATION
 // ============================================
+
+// Segurança: headers HTTP (CSP, X-Frame-Options, nosniff, etc.)
+// Rate limiting específico por rota é definido em cada arquivo de rotas.
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // SPA com Vite: CSP ficaria conflitante com inline styles do dev
+  }),
+);
 
 // CORS Configuration
 app.use(

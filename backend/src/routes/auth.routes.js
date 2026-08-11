@@ -10,6 +10,7 @@
  */
 
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import User from '../models/User.js';
 import { registerUser, login, getUserById, updateUserProfile, listAllUsers, deleteUser, updateProviderConfig, updatePreferredProvider } from '../services/auth.service.js';
 import { authMiddleware, isAdmin } from '../middleware/auth.middleware.js';
@@ -17,12 +18,21 @@ import providerManager from '../services/provider-manager.js';
 
 const router = Router();
 
+// Anti força-bruta: login/registro limitados por IP
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' },
+});
+
 /**
  * @route   POST /api/auth/register
  * @desc    Registrar novo usuário
  * @access  Público
  */
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
     const { email, senha, role, nome } = req.body;
 
@@ -80,7 +90,7 @@ router.post('/register', async (req, res) => {
  * @desc    Fazer login
  * @access  Público
  */
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     const { email, senha } = req.body;
 
