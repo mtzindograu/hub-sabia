@@ -64,6 +64,11 @@
           </button>
         </div>
 
+        <!-- Plano / Créditos (sidebar) -->
+        <div v-if="isLoggedIn && userData" class="sidebar-section sidebar-plan">
+          <CurrentPlanCard :user="userData" @open-modal="isPlanSelectionModalVisible = true" />
+        </div>
+
         <!-- Edital Selector -->
         <div class="sidebar-section">
           <label class="section-label">
@@ -168,10 +173,6 @@
           :has-own-key="!!userData?.has_gemini_key || !!userData?.has_groq_key"
           @select-plan="handleSelectPlan"
         />
-
-        <div v-if="isLoggedIn && userData" class="chat-header-actions">
-           <CurrentPlanCard :user="userData" @open-modal="isPlanSelectionModalVisible = true" />
-        </div>
 
         <!-- Auth Gate: visitantes e sessões expiradas não usam a IA -->
         <div v-if="!isLoggedIn || authGateVisible" class="auth-gate">
@@ -1311,11 +1312,9 @@ function autoResize() {
 }
 
 /* AI Provider Onboarding Styles */
-.chat-header-actions {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 50;
+/* Plano/Créditos na sidebar: card ocupa a largura, sem sobrepor o chat */
+.sidebar-plan .current-plan-card {
+  width: 100%;
 }
 
 /* ===== Gate de login (visitantes / sessão expirada) ===== */
