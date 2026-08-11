@@ -134,7 +134,8 @@ export async function registerUser(userData) {
  */
 export async function login(email, senha) {
   // Buscar usuário por email (normalizado: o schema lowercases no save, o login deve espelhar)
-  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+gemini_api_key +openai_api_key +claude_api_key');
+  // senha_hash tem select:false — precisa ser selecionado explicitamente para validar
+  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+senha_hash +gemini_api_key +openai_api_key +claude_api_key');
 
   if (!user) {
     throw new Error('Email ou senha inválidos');
