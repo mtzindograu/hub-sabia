@@ -172,19 +172,45 @@
         </div>
 
         <!-- Credits Exhausted Modal -->
-        <div v-if="isExhaustedModalVisible" class="provider-onboarding-overlay">
-          <div class="tutorial-container">
-            <div class="tutorial-header">
-              <h1>Plano Gratuito utilizado</h1>
-              <p>Você utilizou todos os créditos gratuitos disponíveis hoje.</p>
+        <div v-if="isExhaustedModalVisible" class="credit-modal-overlay">
+          <div class="credit-modal">
+            <div class="credit-modal-header">
+              <h1>Créditos de hoje usados</h1>
+              <p>Você usou os 20 créditos gratuitos disponíveis.</p>
             </div>
-            
-            <div class="plan-card">
-              <p>Sua cota diária será renovada automaticamente em breve.</p>
-              <router-link to="/perfil" class="btn-primary">
-                Utilizar minha própria conta
+            <div class="credit-modal-body">
+              <p class="credit-modal-note">
+                Sua cota renova automaticamente em 24h. Sem esperar? Configure sua
+                própria chave de IA para uso ilimitado.
+              </p>
+              <router-link to="/perfil" class="btn btn-primary btn-block">
+                Usar minha chave de IA
               </router-link>
+              <button class="btn btn-ghost btn-block" @click="isExhaustedModalVisible = false">
+                Fechar
+              </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Auth Gate: visitantes e sessões expiradas não usam a IA -->
+        <div v-else-if="!isLoggedIn || authGateVisible" class="auth-gate">
+          <div class="auth-gate-card">
+            <div class="auth-gate-icon">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <h2>Entre para usar o Chat IA</h2>
+            <p>Crie uma conta ou faça login para perguntar sobre editais.</p>
+            <router-link to="/login" class="btn btn-primary btn-block">Entrar</router-link>
+            <router-link to="/login?tab=register" class="btn btn-outline btn-block">Criar conta</router-link>
           </div>
         </div>
 
@@ -372,6 +398,7 @@ const userData = ref(null);
 const isPlanSelectionModalVisible = ref(false);
 const isExhaustedModalVisible = ref(false);
 const isPlanAcknowledged = ref(true);
+const authGateVisible = ref(false);
 
 // History management
 const conversations = ref([]);
@@ -578,8 +605,21 @@ async function sendMessage() {
       sources: response.data.fontes,
       metadata: response.data.metadata,
     });
+
+    // Contador vivo: atualiza créditos com o valor pós-débito da API
+    if (response.data.creditStatus && userData.value) {
+      userData.value = {
+        ...userData.value,
+        remainingCredits: response.data.creditStatus.remaining,
+      };
+      localStorage.setItem("user", JSON.stringify(userData.value));
+    }
   } catch (error) {
-    if (error.response?.status === 403) {
+    if (error.status === 401) {
+      // Sessão expirada ou inválida — volta para o gate de login
+      authGateVisible.value = true;
+      isLoggedIn.value = false;
+    } else if (error.code === "CREDITS_EXHAUSTED") {
       isExhaustedModalVisible.value = true;
     } else {
       showError(error.message || "Erro ao processar pergunta");
@@ -1222,320 +1262,103 @@ function autoResize() {
   z-index: 50;
 }
 
-.provider-onboarding-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+/* ===== Gate de login (visitantes / sessão expirada) ===== */
+.auth-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 2rem;
+}
+
+.auth-gate-card {
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.auth-gate-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  border-radius: var(--radius-lg);
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-gate-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.auth-gate-card h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.auth-gate-card p {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 0.5rem;
+}
+
+/* ===== Modal de créditos esgotados ===== */
+.credit-modal-overlay {
+  position: fixed;
+  inset: 0;
   background: var(--color-bg);
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  overflow-y: auto;
 }
 
-.tutorial-container {
-  max-width: 600px;
+.credit-modal {
+  max-width: 400px;
   width: 100%;
-  text-align: center;
-}
-
-.tutorial-header {
-  margin-bottom: 2.5rem;
-}
-
-.tutorial-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  background: var(--color-primary-100);
-  color: var(--color-primary-700);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 1rem;
-}
-
-.tutorial-header h1 {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-}
-
-.tutorial-header p {
-  color: var(--color-gray-500);
-  line-height: 1.6;
-}
-
-.steps-progress {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-bottom: 2rem;
-}
-
-.step-dot {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-surface-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: var(--color-gray-400);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
-}
-
-.step-dot.active {
-  background: var(--color-primary-600);
-  color: white;
-  transform: scale(1.1);
-}
-
-.step-dot.completed {
-  background: var(--color-primary-100);
-  color: var(--color-primary-600);
-  border-color: var(--color-primary-200);
-}
-
-.step-card {
   background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  padding: 2.5rem;
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
   border: 1px solid var(--color-border);
-  min-height: 300px;
-  animation: slideUp 0.4s ease-out;
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.step-icon {
-  font-size: 4rem;
-}
-
-.step-info {
+  border-radius: var(--radius-xl);
+  padding: 2rem 1.75rem;
+  text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.step-number {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-primary-600);
-  text-transform: uppercase;
-}
-
-.step-info h3 {
+.credit-modal-header h1 {
   font-size: 1.5rem;
+  margin: 0 0 0.375rem;
 }
 
-.step-info p {
-  color: var(--color-gray-600);
-  line-height: 1.5;
-}
-
-.btn-tutorial-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  background: var(--color-primary-600);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  text-decoration: none;
-  margin-top: 1rem;
-  transition: all 0.2s ease;
-}
-
-.btn-tutorial-action:hover {
-  background: var(--color-primary-700);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-primary);
-}
-
-.btn-tutorial-action svg {
-  width: 18px;
-  height: 18px;
-}
-
-.tutorial-navigation {
-  margin-top: 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.btn-nav {
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.btn-nav.prev {
-  background: var(--color-surface-2);
-  color: var(--color-gray-600);
-}
-
-.btn-nav.prev:hover:not(:disabled) {
-  background: var(--color-gray-200);
-}
-
-.btn-nav.next {
-  background: var(--color-primary-600);
-  color: white;
-}
-
-.btn-nav.next:hover {
-  background: var(--color-primary-700);
-}
-
-.final-form {
-  flex: 1;
-}
-
-.tutorial-input-group {
-  display: flex;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.tutorial-input-group input {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border: 2px solid var(--color-primary-200);
-  border-radius: var(--radius-md);
+.credit-modal-header p {
+  color: var(--color-text-secondary);
   font-size: 0.9375rem;
-}
-
-.tutorial-input-group input:focus {
-  outline: none;
-  border-color: var(--color-primary-500);
-}
-
-.btn-nav.save {
-  background: var(--color-primary-600);
-  color: white;
-  white-space: nowrap;
-}
-
-.tutorial-help {
-  margin-top: 2rem;
-  font-size: 0.875rem;
-  color: var(--color-gray-400);
-}
-
-.tutorial-help a {
-  color: var(--color-primary-600);
-  font-weight: 600;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .chat-page {
-    grid-template-columns: 1fr;
-  }
-  .chat-sidebar {
-    display: none;
-  }
-}
-.plan-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  margin-top: 3rem;
-}
-
-.plan-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1rem;
-}
-
-.plan-card.primary {
-  border-color: var(--color-primary-300);
-  background: var(--color-primary-50);
-}
-
-.plan-badge {
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--color-primary-700);
-  background: var(--color-primary-100);
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-full);
-}
-
-.plan-features {
-  list-style: none;
-  padding: 0;
-  margin: 1rem 0;
-  text-align: left;
-  font-size: 0.9rem;
-  color: var(--color-gray-600);
-}
-
-.ia-info {
-  font-size: 0.85rem;
-  color: var(--color-gray-500);
   margin: 0;
 }
 
-.btn-primary {
-  background: var(--color-primary-600);
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  width: 100%;
+.credit-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-primary-600);
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  border: 1px solid var(--color-primary-200);
-  text-decoration: none;
-  width: 100%;
-  display: block;
-}
-
-/* Responsivo */
-@media (max-width: 768px) {
-  .plan-options {
-    grid-template-columns: 1fr;
-  }
+.credit-modal-note {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  margin: 0 0 0.5rem;
 }
 </style>

@@ -83,19 +83,12 @@ api.interceptors.response.use(
         );
       }
 
-      // 403 - Acesso negado: mensagem amigável
-      if (status === 403) {
-        console.warn(
-          "[API] Acesso negado — você não tem permissão para esta ação",
-        );
-        return Promise.reject(
-          new Error(
-            "Acesso negado — você não tem permissão para realizar esta ação",
-          ),
-        );
-      }
-
-      return Promise.reject(new Error(message));
+      // Preserva metadados do erro para os componentes (modais de créditos/gate)
+      const err = new Error(message);
+      err.status = status;
+      err.code = error.response?.data?.code || null;
+      err.reason = error.response?.data?.reason || null;
+      return Promise.reject(err);
     } else if (error.request) {
       // Request was made but no response received
       console.error(
