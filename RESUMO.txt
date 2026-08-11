@@ -1,169 +1,92 @@
 ====================================================================
-          HUBSABIA - RESUMO COMPLETO DO PROJETO
+          HUBSABIA - RESUMO DO PROJETO (atualizado 2026-08)
 ====================================================================
 
-ESTRUTURA DO PROJETO
+ESTRUTURA
 ------------------------------------------------------------
- HubSabia/ (Monorepo)
-   +-- frontend/      -> Vue 3 + Vite (porta 5173)
-   +-- backend/       -> Node.js + Express + MongoDB (porta 3001)
-   +-- vercel.json    -> Configuracao de deploy na Vercel
-   +-- package.json   -> Scripts e workspaces
+ HubSabia/ (Monorepo npm workspaces)
+   +-- frontend/   -> Vue 3 + Vite (porta 5173)
+   +-- backend/    -> Node.js + Express + MongoDB (porta 3001)
 
-
-TECNOLOGIAS USADAS
+TECNOLOGIAS
 ------------------------------------------------------------
-Frontend:
-   - Vue.js 3.4+
-   - Vite 5.0+
-   - Vue Router 4.4+
-   - Axios 1.7+
-   - TailwindCSS 3.4+
-
-Backend:
-   - Node.js 18+
-   - Express 4.19+
-   - MongoDB (Mongoose 9.1+)
-   - JWT (jsonwebtoken 9.0+)
-   - bcrypt 6.0+ (hash de senhas)
-   - Groq SDK (IA para chat e extracao)
-   - Multer (upload de PDF)
-   - pdf-parse (extracao de texto)
-
-
-CREDENCIAIS E ACESSOS ATUAIS
-------------------------------------------------------------
-
-ATENCAO - MONGODB ATLAS:
-   Configure no Render ou backend/.env
-   URI: mongodb+srv://<usuario>:<senha>@cluster.mongodb.net/hubsabia
-
-ATENCAO - GROQ API KEY:
-   Configure no painel do Render ou backend/.env
-   Obtenha em: https://console.groq.com/
-
-ATENCAO - JWT SECRET:
-   Gere uma chave segura: openssl rand -base64 32
-   Configure no backend/.env
-
-USUARIO ADMIN PADRAO:
-   Email: admin@hubsabia.com
-   Senha: admin123 (troque em producao!)
-   Role: admin
-   Criado via: npm run create-admin
-
-
-VARIAVEIS DE AMBIENTE (backend/.env)
-------------------------------------------------------------
-   PORT=3001
-   NODE_ENV=development
-   JWT_SECRET=<sua-chave-secreta>
-   MONGODB_URI=<sua-connection-string>
-   GROQ_API_KEY=<sua-groq-api-key>
-   FRONTEND_URL=http://localhost:5173
-   MAX_FILE_SIZE=10485760
-   UPLOAD_DIR=uploads/
-
-
-VARIAVEIS DE AMBIENTE (frontend/.env)
-------------------------------------------------------------
-   VITE_API_URL=http://localhost:3001/api
-   VITE_APP_NAME=HubSabia
-   VITE_APP_VERSION=1.0.0
-
-
-ENDPOINTS DA API
-------------------------------------------------------------
-
-AUTENTICACAO:
-   POST   /api/auth/register   -> Registrar usuario
-   POST   /api/auth/login      -> Login
-   POST   /api/auth/logout     -> Logout
-   GET    /api/auth/me         -> Dados do usuario atual
-   PUT    /api/auth/profile    -> Atualizar perfil
-   GET    /api/auth/users      -> Listar usuarios (admin)
-   DELETE /api/auth/users/:id  -> Deletar usuario (admin)
-
-EDITAIS:
-   POST   /api/edital/upload       -> Upload de PDF (admin)
-   GET    /api/editais             -> Lista todos os editais
-   GET    /api/edital/:id          -> Detalhes de um edital
-   DELETE /api/edital/:id          -> Deletar edital (admin)
-   GET    /api/edital/:id/chunks   -> Trechos de um edital
-
-CHAT:
-   POST   /api/chat/pergunta         -> Fazer pergunta
-   GET    /api/chat/sugestoes/:id    -> Perguntas sugeridas
-   GET    /api/chat/historico        -> Historico de conversas
-
-SAUDE:
-   GET    /api/health              -> Status do servidor
-   GET    /api/debug               -> Debug de conexao
-
-
-ARQUIVOS CRIADOS/MODIFICADOS PARA DEPLOY
-------------------------------------------------------------
-   OK vercel.json                     -> Configuracao Vercel
-   OK backend/src/server-vercel.js    -> Backend serverless
-   OK backend/src/api/index.js        -> Entry point Vercel
-   OK backend/src/config/database.js  -> MongoDB otimizado p/ serverless
-   OK backend/.env.example            -> Atualizado
-   OK frontend/.env.example           -> Atualizado
-   OK frontend/src/services/api.js    -> Mensagem generica
-   OK DEPLOY.md                       -> Guia completo de deploy
-   OK README.md                       -> Atualizado c/ deploy
-   OK COMECE_AQUI.md                  -> Atualizado c/ deploy
-   OK package.json                    -> Scripts Vercel
-
+Frontend: Vue 3.4+, Vite 5, Vue Router 4, Axios, Tailwind (instalado, nao usado)
+Backend:  Node >= 20, Express 4, Mongoose 8, JWT, bcrypt
+IA:       Gemini (padrao) + OpenAI (fallback); chave propria do usuario opcional
+RAG:      pdf-parse (extracao) -> chunking 800 chars -> embeddings
+          (Gemini ou local Xenova) -> busca hibrida (vetorial + keywords) -> resposta
 
 COMO RODAR LOCALMENTE
 ------------------------------------------------------------
+1. npm install
+2. cp backend/.env.example backend/.env  (preencher MONGODB_URI, JWT_SECRET, GEMINI_API_KEY)
+   cp frontend/.env.example frontend/.env
+3. npm run dev
 
-Terminal 1 - Backend:
-   cd backend
-   npm run dev
+Frontend: http://localhost:5173
+Backend:  http://localhost:3001/api/health
 
-Terminal 2 - Frontend:
-   cd frontend
-   npm run dev
-
-Acessar:
-   Frontend: http://localhost:5173
-   Backend:  http://localhost:3001/api/health
-
-
-COMO FAZER DEPLOY NA VERCEL
+ENDPOINTS DA API
 ------------------------------------------------------------
+AUTH:
+  POST   /api/auth/register            Registrar usuario
+  POST   /api/auth/login               Login
+  GET    /api/auth/me                  Dados do usuario atual
+  POST   /api/auth/profile             Atualizar perfil
+  POST   /api/auth/provider-config     Configurar chave de API (gemini/openai)
+  POST   /api/auth/provider-preference Preferencia de provider
+  POST   /api/auth/acknowledge-plan    Aceitar plano atual
+  GET    /api/auth/users               Listar usuarios (admin)
+  DELETE /api/auth/users/:id           Deletar usuario (admin)
 
-1. npm i -g vercel
-2. vercel login
-3. vercel --prod
+EDITAIS:
+  POST   /api/edital/upload            Upload de PDF ou conteudo manual (admin)
+  GET    /api/editais                  Lista de editais
+  GET    /api/edital/:id               Detalhes de um edital
+  GET    /api/edital/:id/chunks        Trechos de um edital
+  DELETE /api/edital/:id               Deletar edital (admin)
 
-Variaveis para configurar no painel da Vercel:
-   MONGODB_URI  -> Sua connection string do MongoDB Atlas
-   JWT_SECRET   -> Gere uma nova chave secreta
-   GROQ_API_KEY -> Sua chave da API Groq
-   VITE_API_URL -> /api (ou URL do backend Render)
+CHAT:
+  POST   /api/chat/pergunta            Fazer pergunta (RAG)
+  POST   /api/chat/pergunta/stream     Streaming (SSE)
+  GET    /api/chat/conversas           Conversas do usuario
+  GET    /api/chat/conversa/:id        Mensagens de uma conversa
+  POST   /api/chat/feedback            Avaliar resposta (logado)
+  GET    /api/chat/sugestoes/:id       Perguntas sugeridas
+  GET    /api/chat/historico           Historico (admin ou proprio)
 
+OUTROS:
+  GET    /api/health                   Saude do servidor
+  POST   /api/logs/error               Log de erros do frontend
 
-PIPELINE RAG (RESUMO)
+CREDITOS E PLANOS
 ------------------------------------------------------------
-1. Upload PDF -> extracao de texto (pdf-parse)
-2. Chunking -> divide texto em blocos (~800 chars)
-3. Embeddings -> vetores de cada chunk (Transformers.js)
-4. Armazenamento -> MongoDB (chunks + vetores)
-5. Consulta -> embedding da pergunta + similaridade cosseno
-6. Resposta -> Groq AI gera resposta baseada nos chunks relevantes
+- 20 creditos diarios por usuario (reset automatico a cada 24h)
+- Chave propria (gemini/openai) no perfil -> uso ilimitado
+- Visitantes usam o chat sem limite de creditos
+- Plano atual: gratuito; selecao exibida na primeira visita logada
 
-
-OBSERVACOES DE SEGURANCA
+ADMIN
 ------------------------------------------------------------
-ATENCAO  NUNCA commite o arquivo .env com senhas reais no Git!
-ATENCAO  Troque JWT_SECRET em producao (gere com: openssl rand -base64 32)
-ATENCAO  Use variaveis de ambiente no painel do Render/Vercel
-ATENCAO  Adicione .env ao .gitignore
+Criar/atualizar admin:  npm run create-admin --workspace=backend
+  (email via ADMIN_EMAIL, senha via ADMIN_PASSWORD ou gerada aleatoria impressa no console)
 
+SEGURANCA
+------------------------------------------------------------
+- JWT_SECRET OBRIGATORIO (backend recusa iniciar sem ele; nunca commitar)
+- Chaves de API dos usuarios armazenadas no banco (nao expostas na API)
+- Erros de provider sao sanitizados (API keys redigidas) antes de logar
+- errorHandler nao persiste corpo de requisicao (senhas/chaves)
+- /api/debug disponivel apenas em desenvolvimento
 
-====================================================================
-                    RESUMO FINALIZADO!
+DEPLOY
+------------------------------------------------------------
+Backend: Render (Node) - npm start (backend/src/server.js)
+Frontend: Vercel - VITE_API_URL=/api com proxy, ou URL direta do backend
+
+OBSERVACOES
+------------------------------------------------------------
+- server-vercel.js / api/ foram removidos (deploy padrao e Render)
+- Pipeline antigo Groq/Transformers.js foi substituido por Gemini multi-provider
+- Tailwind instalado mas o design usa CSS variables (main.css)
 ====================================================================
