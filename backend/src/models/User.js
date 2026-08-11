@@ -91,7 +91,9 @@ userSchema.virtual('senha').set(function(senha) {
 });
 
 // Hash assíncrono (não bloqueia o event loop, ao contrário do hashSync)
-userSchema.pre('save', async function() {
+// IMPORTANTE: pre('validate') — a validação do Mongoose roda ANTES dos hooks pre('save'),
+// então o hash precisa existir quando o validador required de senha_hash executa.
+userSchema.pre('validate', async function() {
   if (this._senha) {
     this.senha_hash = await bcrypt.hash(this._senha, 10);
   }
