@@ -241,6 +241,23 @@ a:not(.btn):hover {
 }
 
 /* ============================================
+   ICONS — tamanho consistente
+   ============================================ */
+
+/* Evita distorção/esticamento de ícones em flex (causa de tamanhos desiguais) */
+svg {
+  flex-shrink: 0;
+}
+
+/* Ícones de botão sem regra própria: base uniforme de 18px.
+   Regras específicas (ex.: .btn-new-chat svg, .btn-icon svg) sobrescrevem. */
+.btn svg,
+.btn-ghost svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ============================================
    BUTTONS
    ============================================ */
 
