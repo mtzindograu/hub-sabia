@@ -9,7 +9,7 @@ Sistema de consulta a editais acadêmicos com IA (RAG). Monorepo npm workspaces:
 
 - **Frontend:** Vue 3.4, Vite 5, Vue Router 4, Axios, Tailwind (configurado, não utilizado)
 - **Backend:** Node ≥ 20 (exigido pelo `@google/genai`), Express 4, Mongoose 8, JWT, bcrypt
-- **IA:** Gemini (padrão) + OpenAI (fallback) — chaves de usuário opcionais
+- **IA:** Gemini (padrão) + Groq (Llama) — chaves de usuário opcionais
 - **RAG:** extração de texto de PDF (pdf-parse) → chunking (~800 chars) → embeddings (Gemini ou local via Xenova) → busca híbrida (vetorial + palavras-chave) → geração de resposta
 
 ## Como rodar
@@ -41,7 +41,7 @@ Acessar: frontend `http://localhost:5173` · backend `http://localhost:3001/api/
 | `MONGODB_URI` | **sim** | Connection string do MongoDB |
 | `JWT_SECRET` | **sim** | Secret JWT — gere com `openssl rand -base64 32`. O backend **recusa iniciar sem ela** |
 | `GEMINI_API_KEY` | não | Chave do Gemini (usada quando o usuário não tem chave própria) |
-| `OPENAI_API_KEY` | não | Chave do OpenAI (fallback) |
+| `GROQ_API_KEY` | não | Chave do Groq (chat Llama) |
 | `ANTHROPIC_API_KEY` | não | Reservado (Claude desabilitado) |
 | `FRONTEND_URL` | não | Origem permitida no CORS (ex.: `http://localhost:5173`) |
 | `MAX_FILE_SIZE` | não | Limite de upload em bytes (default 10MB) |
@@ -58,7 +58,7 @@ Acessar: frontend `http://localhost:5173` · backend `http://localhost:3001/api/
 ## Créditos e planos
 
 - Todo usuário tem **20 créditos diários** (reset automático a cada 24h).
-- Usuário pode configurar **chave própria** (Gemini/OpenAI) no perfil → uso ilimitado (`usingOwnApiKey.active`).
+- Usuário pode configurar **chave própria** (Gemini/Groq) no perfil → uso ilimitado (`usingOwnApiKey.active`).
 - Visitantes (sem login) usam o chat sem limite de créditos.
 - Plano atual: gratuito apenas; a seleção de planos é exibida na primeira visita logada.
 

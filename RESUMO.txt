@@ -12,7 +12,7 @@ TECNOLOGIAS
 ------------------------------------------------------------
 Frontend: Vue 3.4+, Vite 5, Vue Router 4, Axios, Tailwind (instalado, nao usado)
 Backend:  Node >= 20, Express 4, Mongoose 8, JWT, bcrypt
-IA:       Gemini (padrao) + OpenAI (fallback); chave propria do usuario opcional
+IA:       Gemini (padrao) + Groq (Llama); chave propria do usuario opcional
 RAG:      pdf-parse (extracao) -> chunking 800 chars -> embeddings
           (Gemini ou local Xenova) -> busca hibrida (vetorial + keywords) -> resposta
 
