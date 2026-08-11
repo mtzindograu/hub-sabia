@@ -11,11 +11,15 @@
         </transition>
       </router-view>
     </main>
+
+    <!-- Footer -->
+    <AppFooter />
   </div>
 </template>
 
 <script setup>
 import ToastContainer from './components/ToastContainer.vue'
+import AppFooter from './components/AppFooter.vue'
 </script>
 
 <style scoped>
