@@ -1302,7 +1302,9 @@ function autoResize() {
 }
 
 .auth-gate-card h2 {
-  font-size: 1.25rem;
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 600;
   margin: 0;
 }
 
@@ -1339,7 +1341,9 @@ function autoResize() {
 }
 
 .credit-modal-header h1 {
+  font-family: var(--font-display);
   font-size: 1.5rem;
+  font-weight: 600;
   margin: 0 0 0.375rem;
 }
 

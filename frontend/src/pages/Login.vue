@@ -1,7 +1,22 @@
 <template>
   <div class="auth-page">
     <div class="auth-container">
-      <!-- Back to Home -->
+      <!-- Painel de marca (desktop) -->
+      <div class="auth-brand">
+        <div class="brand-pattern"></div>
+        <div class="brand-inner">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+          </div>
+          <h2>HubSabia</h2>
+          <p>Editais acadêmicos com respostas de IA, direto na fonte.</p>
+        </div>
+      </div>
+
+      <!-- Coluna do formulário -->
+      <div class="auth-panel">
       <div class="auth-header-top">
         <router-link to="/" class="back-link">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -133,6 +148,7 @@
           <span v-else>Criar Conta</span>
         </button>
       </form>
+      </div><!-- /auth-panel -->
     </div>
   </div>
 </template>
@@ -281,11 +297,87 @@ watch(
   background: var(--color-surface);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-xl);
-  padding: 2.5rem;
   width: 100%;
-  max-width: 420px;
+  max-width: 860px;
   position: relative;
   border: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  overflow: hidden;
+}
+
+/* Painel de marca */
+.auth-brand {
+  position: relative;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(34, 197, 94, 0.35), transparent 55%),
+    radial-gradient(ellipse 70% 55% at 90% 90%, rgba(59, 130, 246, 0.25), transparent 60%),
+    linear-gradient(160deg, var(--color-primary-700) 0%, var(--color-primary-800) 100%);
+  color: var(--color-text-inverse);
+  display: flex;
+  align-items: flex-end;
+  padding: 2.5rem;
+  min-height: 420px;
+}
+
+.brand-pattern {
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.brand-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.brand-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.auth-brand h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.auth-brand p {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 240px;
+  margin: 0;
+}
+
+/* Coluna do formulário */
+.auth-panel {
+  padding: 2.5rem;
+}
+
+@media (max-width: 720px) {
+  .auth-container {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
+
+  .auth-brand {
+    display: none;
+  }
 }
 
 .auth-header-top {

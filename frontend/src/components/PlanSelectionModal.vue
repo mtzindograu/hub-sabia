@@ -69,7 +69,9 @@ defineEmits(['select-plan']);
 }
 
 .plan-modal-header h1 {
+  font-family: var(--font-display);
   font-size: 1.75rem;
+  font-weight: 600;
   margin-bottom: 0.375rem;
 }
 
