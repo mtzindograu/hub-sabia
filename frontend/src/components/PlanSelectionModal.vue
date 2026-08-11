@@ -120,6 +120,13 @@ defineEmits(['select-plan']);
   margin: 0 0 0.75rem;
 }
 
+/* Pina o botão na base do card e fixa a altura (btn-outline tem borda 2px e fica
+   4px mais alto que btn-primary; com height fixa + border-box, ambos alinham) */
+.plan-option .btn {
+  margin-top: auto;
+  height: 44px;
+}
+
 .plan-modal-footer {
   margin-top: 1.5rem;
   text-align: center;
