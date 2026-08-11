@@ -271,7 +271,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
-import { logout, getCurrentUser, updateProviderConfig, updatePreferredProvider } from '../services/api.js'
+import { logout, getCurrentUser, updateProviderConfig } from '../services/api.js'
 import { info, success, error as toastError } from '../utils/toast.js'
 
 const router = useRouter()
@@ -328,10 +328,12 @@ const formattedResetTime = computed(() => {
 async function fetchUserData() {
   try {
     const response = await getCurrentUser()
-    if (response) {
-      currentUser.value = response
-      preferredProvider.value = response.preferred_provider || 'gemini'
-      localStorage.setItem('user', JSON.stringify(response))
+    // O interceptor retorna o body {success, data} — extrair o usuário real
+    const user = response?.data || response
+    if (user && user.email) {
+      currentUser.value = user
+      preferredProvider.value = user.preferred_provider || 'gemini'
+      localStorage.setItem('user', JSON.stringify(user))
     }
   } catch (err) {
     console.error('Erro ao buscar dados do usuário:', err)

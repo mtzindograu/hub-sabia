@@ -346,7 +346,6 @@ import {
   getSuggestedQuestions,
   getConversations,
   getConversationMessages,
-  updateGeminiKey,
   acknowledgePlan,
   getCurrentUser,
 } from "../services/api.js";
@@ -369,32 +368,10 @@ const sidebarClosed = ref(false);
 const showScrollButton = ref(false);
 const editaisLoaded = ref(false);
 const isLoggedIn = ref(false);
-const isChatUnlocked = ref(false);
 const userData = ref(null);
 const isPlanSelectionModalVisible = ref(false);
 const isExhaustedModalVisible = ref(false);
 const isPlanAcknowledged = ref(true);
-
-// Tutorial steps
-const currentStep = ref(1);
-const tutorialSteps = [
-  {
-    step: 1,
-    title: "Chat Iniciado",
-    description: "Você está utilizando o Gemini Gratuito fornecido pelo HubSabia.",
-    icon: "🤖",
-    actionLabel: "Começar",
-    isProfileLink: false
-  },
-  {
-    step: 2,
-    title: "Chave Pessoal (Opcional)",
-    description: "Se desejar, você pode configurar sua própria chave API no perfil para aumentar seus limites.",
-    icon: "🔑",
-    actionLabel: "Configurar (Opcional)",
-    isProfileLink: true
-  }
-];
 
 // History management
 const conversations = ref([]);
@@ -426,23 +403,32 @@ onMounted(async () => {
 
 async function refreshUserData() {
   try {
-    const user = await getCurrentUser();
-    userData.value = user;
-    isPlanAcknowledged.value = !!user.planAcknowledged;
-    // Update local cache
-    localStorage.setItem("user", JSON.stringify(user));
+    const response = await getCurrentUser();
+    // O interceptor retorna {success, data} — extrair o usuário real
+    const user = response?.data || response;
+    if (user && user.email) {
+      userData.value = user;
+      isPlanAcknowledged.value = !!user.planAcknowledged;
+      // Update local cache (objeto usuário real — nunca o wrapper)
+      localStorage.setItem("user", JSON.stringify(user));
+    }
   } catch (err) {
     console.error("Error refreshing user data:", err);
   }
 }
 
 function checkUserKey() {
-  isChatUnlocked.value = isLoggedIn.value;
   const stored = localStorage.getItem("user");
   if (stored) {
-    const user = JSON.parse(stored);
-    userData.value = user;
-    isPlanAcknowledged.value = !!user.planAcknowledged;
+    try {
+      const parsed = JSON.parse(stored);
+      if (parsed && parsed.email) {
+        userData.value = parsed;
+        isPlanAcknowledged.value = !!parsed.planAcknowledged;
+      }
+    } catch {
+      // dados corrompidos — ignora
+    }
   }
   
   if (isLoggedIn.value) {
@@ -453,15 +439,11 @@ function checkUserKey() {
 }
 
 async function handleAcknowledgePlan() {
-  console.log('[DEBUG] handleAcknowledgePlan called');
   try {
     await acknowledgePlan();
-    console.log('[DEBUG] acknowledgePlan API call successful');
     await refreshUserData();
-    console.log('[DEBUG] refreshUserData successful');
     isPlanSelectionModalVisible.value = false;
     isPlanAcknowledged.value = true;
-    console.log('[DEBUG] UI state updated');
     showSuccess('Plano atualizado com sucesso!');
   } catch (err) {
     console.error("Error acknowledging plan:", err);
@@ -596,11 +578,6 @@ async function sendMessage() {
       sources: response.data.fontes,
       metadata: response.data.metadata,
     });
-
-    // Update credits
-    if (response.data.creditStatus) {
-      credits.value = response.data.creditStatus.remaining;
-    }
   } catch (error) {
     if (error.response?.status === 403) {
       isExhaustedModalVisible.value = true;
