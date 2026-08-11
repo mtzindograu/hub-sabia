@@ -206,11 +206,10 @@ router.post('/provider-preference', authMiddleware, async (req, res) => {
  */
 router.post('/acknowledge-plan', authMiddleware, async (req, res) => {
   try {
-    console.log('[DEBUG] Acknowledging plan for user:', req.user.id);
     await User.updateOne({ _id: req.user.id }, { planAcknowledged: true });
     res.json({ success: true, message: 'Plano aceito com sucesso' });
   } catch (error) {
-    console.error('[DEBUG] Error acknowledging plan for user:', req.user.id, error);
+    console.error('[AUTH] Error acknowledging plan for user:', req.user.id, error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -46,7 +46,7 @@ app.use(
       "http://localhost:3000",
       "http://127.0.0.1:3000",
       "https://hub-sabia-teste-frontend.vercel.app",
-    ],
+    ].filter(Boolean),
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -72,17 +72,19 @@ if (process.env.NODE_ENV === "development") {
   });
 }
 
-// Debug endpoint to test connection
-app.get("/api/debug", (req, res) => {
-  console.log("[DEBUG] Debug endpoint accessed");
-  res.json({
-    status: "debug",
-    timestamp: new Date().toISOString(),
-    ip: req.ip,
-    headers: req.headers,
-    message: "Backend is reachable!",
+// Debug endpoint to test connection (apenas em desenvolvimento — vaza headers em produção)
+if (process.env.NODE_ENV !== 'production') {
+  app.get("/api/debug", (req, res) => {
+    console.log("[DEBUG] Debug endpoint accessed");
+    res.json({
+      status: "debug",
+      timestamp: new Date().toISOString(),
+      ip: req.ip,
+      headers: req.headers,
+      message: "Backend is reachable!",
+    });
   });
-});
+}
 
 // ============================================
 // API ROUTES
@@ -278,15 +280,15 @@ app.use(errorHandler);
 // SERVER STARTUP
 // ============================================
 
-// Global error handlers to prevent server crashes
+// Global error handlers — em estado indefinido o servidor NÃO deve continuar
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
-  // Don't exit - log and continue
+  process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
-  // Don't exit - log and continue
+  process.exit(1);
 });
 
 // Start server with database connection

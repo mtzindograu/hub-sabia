@@ -24,43 +24,56 @@ export function extractToken(req) {
  * Verifica se o usuário está autenticado e adiciona req.user
  */
 export async function authMiddleware(req, res, next) {
-  const token = extractToken(req);
-  
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      error: 'Não autenticado',
-      message: 'Token de acesso não fornecido'
-    });
+  try {
+    const token = extractToken(req);
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        error: 'Não autenticado',
+        message: 'Token de acesso não fornecido'
+      });
+    }
+    
+    // Verificar token
+    const payload = verifyToken(token);
+    
+    if (!payload) {
+      return res.status(401).json({
+        success: false,
+        error: 'Token inválido',
+        message: 'Token expirado ou inválido'
+      });
+    }
+    
+    // Buscar usuário no banco
+    const user = await getUserById(payload.id);
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Usuário não encontrado',
+        message: 'Usuário não existe mais no sistema'
+      });
+    }
+    
+    // Adicionar usuário ao request
+    req.user = user;
+    req.token = token;
+    
+    next();
+  } catch (error) {
+    // Token forjado com id malformado → CastError do Mongoose
+    if (error.name === 'CastError' || error.name === 'ValidationError') {
+      return res.status(401).json({
+        success: false,
+        error: 'Token inválido',
+        message: 'Token expirado ou inválido'
+      });
+    }
+    // Falha de infraestrutura: deixa o errorHandler responder (não pendura a request)
+    next(error);
   }
-  
-  // Verificar token
-  const payload = verifyToken(token);
-  
-  if (!payload) {
-    return res.status(401).json({
-      success: false,
-      error: 'Token inválido',
-      message: 'Token expirado ou inválido'
-    });
-  }
-  
-  // Buscar usuário no banco
-  const user = await getUserById(payload.id);
-  
-  if (!user) {
-    return res.status(401).json({
-      success: false,
-      error: 'Usuário não encontrado',
-      message: 'Usuário não existe mais no sistema'
-    });
-  }
-  
-  // Adicionar usuário ao request
-  req.user = user;
-  req.token = token;
-  
-  next();
 }
 
 /**
@@ -93,20 +106,28 @@ export function isAdmin(req, res, next) {
  * Útil para rotas que funcionam diferente para usuários logados
  */
 export async function optionalAuthMiddleware(req, res, next) {
-  const token = extractToken(req);
-  
-  if (token) {
-    const payload = verifyToken(token);
+  try {
+    const token = extractToken(req);
     
-    if (payload) {
-      const user = await getUserById(payload.id);
+    if (token) {
+      const payload = verifyToken(token);
       
-      if (user) {
-        req.user = user;
-        req.token = token;
+      if (payload) {
+        const user = await getUserById(payload.id);
+        
+        if (user) {
+          req.user = user;
+          req.token = token;
+        }
       }
     }
+    
+    next();
+  } catch (error) {
+    // Token forjado com id malformado: segue como anônimo (rota é opcional)
+    if (error.name === 'CastError' || error.name === 'ValidationError') {
+      return next();
+    }
+    next(error);
   }
-  
-  next();
 }

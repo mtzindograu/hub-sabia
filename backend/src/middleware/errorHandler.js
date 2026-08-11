@@ -3,71 +3,22 @@ import ErrorLog from '../models/ErrorLog.js';
 /**
  * Error Handling Middleware
  * Centralized error handling for the API
- * 
+ *
  * @description Provides consistent error responses
  */
 
 /**
- * Custom API Error class
- */
-export class APIError extends Error {
-  constructor(message, statusCode = 500, errorCode = 'INTERNAL_ERROR') {
-    super(message);
-    this.statusCode = statusCode;
-    this.errorCode = errorCode;
-    this.name = 'APIError';
-  }
-}
-
-/**
- * Not Found Error (404)
- */
-export class NotFoundError extends APIError {
-  constructor(resource = 'Resource') {
-    super(`${resource} not found`, 404, 'NOT_FOUND');
-  }
-}
-
-/**
- * Validation Error (400)
- */
-export class ValidationError extends APIError {
-  constructor(message, errors = []) {
-    super(message, 400, 'VALIDATION_ERROR');
-    this.errors = errors;
-  }
-}
-
-/**
- * Unauthorized Error (401)
- */
-export class UnauthorizedError extends APIError {
-  constructor(message = 'Unauthorized access') {
-    super(message, 401, 'UNAUTHORIZED');
-  }
-}
-
-/**
- * Rate Limit Error (429)
- */
-export class RateLimitError extends APIError {
-  constructor(message = 'Too many requests') {
-    super(message, 429, 'RATE_LIMIT_EXCEEDED');
-  }
-}
-
-/**
  * Global error handler middleware
+ * NOTA: NUNCA persiste req.body (pode conter senhas e API keys).
  */
 export async function errorHandler(err, req, res, next) {
-  // Extract info for logging
+  // Extract info for logging (sem payload do corpo — dados sensíveis)
   const statusCode = err.statusCode || 500;
   const errorMessage = err.message || 'Internal Server Error';
   const stack = err.stack;
   const path = req.path;
   const method = req.method;
   const userId = req.user?._id || null;
-  const payload = req.method !== 'GET' ? req.body : null;
 
   // Log error for debugging (console)
   console.error('Error:', {
@@ -88,7 +39,6 @@ export async function errorHandler(err, req, res, next) {
       rota_api: `${method} ${path}`,
       status_code: statusCode,
       usuario_id: userId,
-      payload_recebido: payload,
       origem_erro: 'backend',
       horario: new Date()
     }).catch(dbErr => {
@@ -96,17 +46,6 @@ export async function errorHandler(err, req, res, next) {
     });
   } catch (logErr) {
     console.error('[ErrorLogger] Critical error in logging middleware:', logErr.message);
-  }
-  
-  // Handle known API errors
-  if (err instanceof APIError) {
-    return res.status(err.statusCode).json({
-      success: false,
-      error: err.message,
-      code: err.errorCode,
-      errors: err.errors || undefined,
-      timestamp: new Date().toISOString()
-    });
   }
   
   // Handle Multer errors
@@ -138,34 +77,17 @@ export async function errorHandler(err, req, res, next) {
     });
   }
   
-  // Handle generic errors
-  res.status(500).json({
+  // Handle generic errors (nunca expõe error.message cru ao cliente em produção)
+  res.status(statusCode).json({
     success: false,
-    error: process.env.NODE_ENV === 'production' 
-      ? 'An unexpected error occurred' 
+    error: process.env.NODE_ENV === 'production' || statusCode >= 500
+      ? 'Um erro inesperado ocorreu'
       : err.message,
     code: 'INTERNAL_ERROR',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     timestamp: new Date().toISOString()
   });
 }
 
-/**
- * Async handler wrapper
- * Catches errors in async route handlers
- */
-export function asyncHandler(fn) {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-}
-
 export default {
-  APIError,
-  NotFoundError,
-  ValidationError,
-  UnauthorizedError,
-  RateLimitError,
-  errorHandler,
-  asyncHandler
+  errorHandler
 };
