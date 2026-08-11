@@ -141,7 +141,7 @@ watch(() => route.query.upload, (newVal) => {
 .empty-icon svg { width: 24px; height: 24px; }
 .empty-state h2 { margin: 0.85rem 0 0.3rem; color: var(--color-text); font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
 .empty-state p { margin-bottom: 1rem; }
-.editais-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.editais-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.25rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 700px) { .page-intro { align-items: flex-start; flex-direction: column; } .upload-button { width: 100%; } .editais-toolbar { align-items: stretch; flex-direction: column; } .search-box { max-width: none; } .count-badge { align-self: flex-start; } .editais-grid { grid-template-columns: 1fr; } }
 </style>

@@ -108,7 +108,7 @@ onMounted(async () => {
 .empty-state h3 { color: var(--color-text); margin-bottom: 0.5rem; }
 
 /* Grid (shared) */
-.editais-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem; }
+.editais-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
 .edital-card { background: var(--color-surface); border-radius: 14px; padding: 1.25rem; border: 1px solid var(--color-border); cursor: pointer; transition: all 0.2s; }
 .edital-card:hover { border-color: var(--color-primary-300); box-shadow: var(--shadow-md); transform: translateY(-2px); }
 .card-top, .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.875rem; }

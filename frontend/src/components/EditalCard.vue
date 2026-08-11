@@ -320,6 +320,7 @@ async function handleDelete() {
 /* Ações (botões) */
 .card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
@@ -338,7 +339,8 @@ async function handleDelete() {
   border: none;
   cursor: pointer;
   transition: all var(--transition-fast);
-  flex: 1;
+  flex: 1 1 120px;
+  min-width: max-content;
   white-space: nowrap;
 }
 
