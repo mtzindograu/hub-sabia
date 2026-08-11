@@ -1,7 +1,7 @@
 <template>
   <div
     class="dashboard-layout"
-    :class="{ 'sidebar-mobile-open': isMobileMenuOpen }"
+    :class="{ 'sidebar-collapsed': isCollapsed, 'sidebar-mobile-open': isMobileMenuOpen }"
   >
     <!-- ToastContainer vive APENAS no App.vue (evita toasts duplicados) -->
 
@@ -331,12 +331,13 @@ onMounted(() => {
 
 .sidebar {
   width: 264px;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   z-index: 1000;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
@@ -540,7 +541,8 @@ onMounted(() => {
 .logout-btn { border: 1px solid transparent; background: transparent; color: var(--color-danger-500); cursor: pointer; }
 .logout-btn:hover { background: var(--color-danger-50); color: var(--color-danger-600); }
 
-.main-content { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.main-content { min-width: 0; flex: 1; display: flex; flex-direction: column; margin-left: 264px; transition: margin-left var(--transition-slow); }
+.dashboard-layout.sidebar-collapsed .main-content { margin-left: 80px; }
 
 .top-header {
   min-height: 76px;
@@ -580,6 +582,7 @@ onMounted(() => {
 @media (max-width: 1024px) {
   .sidebar { position: fixed; transform: translateX(-100%); }
   .sidebar.mobile-open { width: 280px; transform: translateX(0); }
+  .main-content, .dashboard-layout.sidebar-collapsed .main-content { margin-left: 0; }
   .show-mobile { display: flex; }
   .hide-mobile { display: none; }
   .top-header { padding-inline: 1rem; }
