@@ -6,19 +6,28 @@
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import BaseProvider from "./base.provider.js";
-import { normalizeProviderError, estimateCost } from "../../utils/provider-utils.js";
+import { normalizeProviderError, estimateCost, parseJsonText } from "../../utils/provider-utils.js";
 
 dotenv.config();
 
 // --- CONFIGURATION & STATE (SINGLE SOURCE OF TRUTH) ---
 const REQUEST_TIMEOUT_MS = 15000; // 15 seconds max per request
 
+// Modelos vigentes na API v1beta (gemini-1.5-flash foi descontinuado — 404).
+// O autoDiscoverModels tenta atualizar para "flash-latest"; estes são o fallback seguro.
 export let GEMINI_MODELS = {
-  CHAT: "models/gemini-1.5-flash",
+  CHAT: "models/gemini-2.5-flash",
   EMBEDDING: "models/text-embedding-004",
-  FAST: "models/gemini-1.5-flash",
-  PRO: "models/gemini-1.5-flash" // REPLACED PRO WITH FLASH
+  FAST: "models/gemini-2.5-flash",
+  PRO: "models/gemini-2.5-flash"
 };
+
+// Ordem de tentativa quando um modelo falha (404/503/quota)
+const CHAT_MODEL_FALLBACKS = [
+  "models/gemini-2.5-flash",
+  "models/gemini-2.0-flash",
+  "models/gemini-flash-latest",
+];
 
 let DEFAULT_MODEL = GEMINI_MODELS.CHAT;
 let EMBEDDING_MODEL = GEMINI_MODELS.EMBEDDING;
@@ -72,7 +81,7 @@ export class GeminiProvider extends BaseProvider {
    */
   async generateResponse(question, contextChunks = [], options = {}) {
     const { userApiKey = null } = options;
-    const fallbackModels = ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-flash-latest'];
+    const fallbackModels = CHAT_MODEL_FALLBACKS;
     
     // Use requested model or default, then try fallbacks
     const initialModel = options.model || DEFAULT_MODEL;
@@ -221,33 +230,99 @@ export class GeminiProvider extends BaseProvider {
 
   /**
    * Extract points from Edital
+   * Robusto: parse tolerante a markdown, retry com modelo FAST, defaults em todos
+   * os campos (a IA pode retornar parcial — o edital não pode ficar com campos vazios).
    */
   async extractMainPoints(editalContent, options = {}) {
-    try {
-      const { userApiKey = null } = options;
-      const client = this.#getClient(userApiKey);
-      const prompt = `Extraia dados do edital em JSON:\n${editalContent.slice(0, 10000)}\n\nCampos: titulo, objetivo_principal, prazos_importantes, requisitos, etapas, documentos_necessarios, palavras_chave, publico_alvo, vagas, inscricoes_periodo, contatos.`;
+    const { userApiKey = null } = options;
+    const content = String(editalContent || '').slice(0, 12000);
 
+    const prompt = `Você é um extrator de dados estruturados de editais acadêmicos.
+Extraia do edital abaixo um objeto JSON VÁLIDO com EXATAMENTE estas chaves:
+{
+  "titulo": "string",
+  "objetivo_principal": "string (resumo do objetivo em 1-2 frases)",
+  "prazos_importantes": ["string", ...],
+  "requisitos": ["string", ...],
+  "etapas": ["string", ...],
+  "documentos_necessarios": ["string", ...],
+  "palavras_chave": ["string", ...],
+  "publico_alvo": "string",
+  "vagas": "string",
+  "inscricoes_periodo": "string",
+  "contatos": "string"
+}
+Regras: liste apenas o que existir no texto; use string vazia ou array vazio para o que não existir; NÃO invente informações. Responda APENAS o JSON, sem markdown.
+
+EDITAL:
+${content}`;
+
+    const tryExtract = async (model, timeoutMs) => {
+      const client = this.#getClient(userApiKey);
       const result = await withTimeout(client.models.generateContent({
-        model: GEMINI_MODELS.PRO,
+        model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: { responseMimeType: "application/json" }
-      }));
+      }), timeoutMs);
+      const usageMeta = result.usageMetadata || {};
+      return {
+        data: parseJsonText(getTextFromResponse(result)),
+        usage: {
+          promptTokens: usageMeta.promptTokenCount || 0,
+          completionTokens: usageMeta.candidatesTokenCount || 0,
+          totalTokens: usageMeta.totalTokenCount || 0,
+          estimatedCost: 0,
+        },
+      };
+    };
 
-      const usage = result.usageMetadata || {};
-      const promptTokens = usage.promptTokenCount || 0;
-      const completionTokens = usage.candidatesTokenCount || 0;
-      const totalTokens = usage.totalTokenCount || (promptTokens + completionTokens);
-      const estimatedCost = estimateCost('gemini', GEMINI_MODELS.PRO, promptTokens, completionTokens);
+    try {
+      // Tenta modelos em ordem (2.5-flash → 2.0-flash → flash-latest) para tolerar 404/503
+      const modelsToTry = [...new Set([GEMINI_MODELS.PRO, ...CHAT_MODEL_FALLBACKS])];
+      let attempt = { data: null, usage: null };
+      let lastError = null;
+
+      for (const model of modelsToTry) {
+        try {
+          attempt = await tryExtract(model, 25000);
+          if (attempt.data) {
+            console.log(`[Gemini] Extração OK com modelo ${model}`);
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+          console.warn(`[Gemini] Extração falhou com ${model}: ${err.message?.slice(0, 80)}`);
+        }
+      }
+
+      if (!attempt.data || typeof attempt.data !== 'object') {
+        throw lastError || new Error('Não foi possível extrair os dados do edital');
+      }
+
+      // Garante que TODOS os campos existem (mesmo se a IA retornar parcial)
+      const defaults = {
+        titulo: '',
+        objetivo_principal: '',
+        prazos_importantes: [],
+        requisitos: [],
+        etapas: [],
+        documentos_necessarios: [],
+        palavras_chave: [],
+        publico_alvo: '',
+        vagas: '',
+        inscricoes_periodo: '',
+        contatos: '',
+      };
+      const data = { ...defaults, ...attempt.data };
 
       return {
         success: true,
-        data: JSON.parse(getTextFromResponse(result)),
-        metadata: { 
-          model: GEMINI_MODELS.PRO, 
+        data,
+        metadata: {
+          model: GEMINI_MODELS.PRO,
           provider: 'gemini',
-          usage: { promptTokens, completionTokens, totalTokens, estimatedCost }
-        }
+          usage: attempt.usage,
+        },
       };
     } catch (error) {
       console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".extractMainPoints:", {
@@ -265,41 +340,54 @@ export class GeminiProvider extends BaseProvider {
    * Generate summary
    */
   async generateEditalSummary(editalContent, options = {}) {
-    try {
-      const { userApiKey = null } = options;
-      const client = this.#getClient(userApiKey);
-      const prompt = `Resuma o edital:\n${editalContent.slice(0, 8000)}`;
+    const { userApiKey = null } = options;
+    const prompt = `Resuma o edital:\n${String(editalContent || '').slice(0, 8000)}`;
+    const modelsToTry = [...new Set([GEMINI_MODELS.CHAT, ...CHAT_MODEL_FALLBACKS])];
+    let lastError = null;
 
-      const result = await withTimeout(client.models.generateContent({
-        model: GEMINI_MODELS.CHAT,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
-      }));
+    for (const model of modelsToTry) {
+      try {
+        const client = this.#getClient(userApiKey);
+        const result = await withTimeout(client.models.generateContent({
+          model,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        }));
 
-      const usage = result.usageMetadata || {};
-      const promptTokens = usage.promptTokenCount || 0;
-      const completionTokens = usage.candidatesTokenCount || 0;
-      const totalTokens = usage.totalTokenCount || (promptTokens + completionTokens);
-      const estimatedCost = estimateCost('gemini', GEMINI_MODELS.CHAT, promptTokens, completionTokens);
-      
-      return { 
-        success: true, 
-        summary: getTextFromResponse(result),
-        metadata: {
-          model: GEMINI_MODELS.CHAT,
-          provider: 'gemini',
-          usage: { promptTokens, completionTokens, totalTokens, estimatedCost }
+        const text = getTextFromResponse(result);
+        if (!text) {
+          lastError = new Error('Resposta vazia');
+          continue;
         }
-      };
-    } catch (error) {
-      console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateEditalSummary:", {
-        message: error.message,
-        status: error.status,
-        code: error.code,
-        name: error.name
-      });
-      const normalized = normalizeProviderError(error, 'gemini');
-      return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
+
+        const usage = result.usageMetadata || {};
+        const promptTokens = usage.promptTokenCount || 0;
+        const completionTokens = usage.candidatesTokenCount || 0;
+        const totalTokens = usage.totalTokenCount || (promptTokens + completionTokens);
+        const estimatedCost = estimateCost('gemini', model, promptTokens, completionTokens);
+
+        return {
+          success: true,
+          summary: text,
+          metadata: {
+            model,
+            provider: 'gemini',
+            usage: { promptTokens, completionTokens, totalTokens, estimatedCost }
+          }
+        };
+      } catch (error) {
+        lastError = error;
+        console.warn(`[Gemini] Summary falhou com ${model}: ${error.message?.slice(0, 80)}`);
+      }
     }
+
+    console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateEditalSummary:", {
+      message: lastError?.message,
+      status: lastError?.status,
+      code: lastError?.code,
+      name: lastError?.name
+    });
+    const normalized = normalizeProviderError(lastError || new Error('Falha ao gerar resumo'), 'gemini');
+    return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
   }
 }
 

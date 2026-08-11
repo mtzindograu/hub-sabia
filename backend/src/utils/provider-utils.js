@@ -4,6 +4,28 @@
  */
 
 /**
+ * Tenta extrair um objeto JSON de uma string de resposta (tolera fences de markdown
+ * e texto ao redor — modelos às vezes embrulham o JSON em ```json ... ```).
+ * @param {string} text - Texto de resposta
+ * @returns {object|null} Objeto parseado ou null se não houver JSON válido
+ */
+export function parseJsonText(text) {
+  if (!text || typeof text !== 'string') return null;
+  let cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch { /* tenta extrair o bloco {...} */ }
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    } catch { /* sem JSON válido */ }
+  }
+  return null;
+}
+
+/**
  * Redige segredos (API keys) de mensagens de erro antes de logar/devolver ao cliente.
  * @param {string} message - Mensagem original
  * @returns {string} Mensagem com chaves redigidas

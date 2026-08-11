@@ -207,9 +207,14 @@ router.post("/upload", authMiddleware, isAdmin, uploadMiddleware, async (req, re
 
       console.log("[API] Edital metadata updated");
     } else {
-      console.error("[API] All AI extraction failed, using basic data");
-      edital.descricao = descricao || cleanedText.slice(0, 500);
-      edital.objetivo_principal = descricao || cleanedText.slice(0, 500);
+      console.error("[API] AI extraction failed:", mainPointsResult.error, "- usando dados básicos");
+      // Fallback: primeira frase significativa como objetivo (evita card vazio)
+      const firstSentence = cleanedText
+        .split(/\n+/)
+        .map(s => s.trim())
+        .find(s => s.length > 30) || cleanedText.slice(0, 300);
+      edital.descricao = descricao || firstSentence;
+      edital.objetivo_principal = descricao || firstSentence;
       await edital.save();
     }
 
