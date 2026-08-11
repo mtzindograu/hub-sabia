@@ -128,13 +128,23 @@
   --color-gray-100: #1e293b;
   --color-gray-50: #0f172a;
 
-  /* Semantic - Dark mode versions */
-  --color-primary-50: #052e16; /* Emerald 950 */
-  --color-primary-100: #064e3b; /* Emerald 900 */
-  --color-success-50: #052e16;
-  --color-warning-50: #451a03; /* Amber 950 */
-  --color-danger-50: #450a0a; /* Red 950 */
-  --color-info-50: #172554; /* Blue 950 */
+  /* Semantic - Dark mode versions
+     Tintas de painel mais suaves e legíveis (não "quase preto"):
+     os painéis (prazos, requisitos, documentos, etapas) usam *-50/100 como fundo
+     e *-700 como texto; no dark isso ficava escuro sobre escuro. */
+  --color-primary-50: #0d3b21; /* Emerald tint suave */
+  --color-primary-100: #125432;
+  --color-primary-200: #1a6b3f;
+  --color-success-50: #0d3b21;
+  --color-success-100: #125432;
+  --color-warning-50: #4a3613; /* Amber tint suave */
+  --color-warning-100: #5c461a;
+  --color-warning-700: #fcd34d; /* texto âmbar claro (legível no dark) */
+  --color-danger-50: #3d1515; /* Red tint suave */
+  --color-danger-100: #521c1c;
+  --color-info-50: #172a4d; /* Blue tint suave */
+  --color-info-100: #1e3563;
+  --color-info-700: #93c5fd;
 
   /* Shadows for dark mode */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);

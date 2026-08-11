@@ -67,7 +67,7 @@
                 <span class="file-name">{{ file.name }}</span>
                 <span class="file-size">{{ formatFileSize(file.size) }}</span>
               </div>
-              <button class="btn-remove-file" @click.stop="file = null">
+              <button class="btn-remove-file" @click.stop="file = null" title="Remover arquivo" aria-label="Remover arquivo">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -410,12 +410,26 @@ const handleUpload = async () => {
 }
 
 .btn-remove-file {
-  background: var(--color-danger-50);
-  border: none;
-  color: var(--color-danger-600);
+  background: transparent;
+  border: 1px solid var(--color-danger-500);
+  color: var(--color-danger-500);
   padding: 0.375rem;
   border-radius: var(--radius-md);
   cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.btn-remove-file:hover {
+  background: var(--color-danger-500);
+  border-color: var(--color-danger-500);
+  color: var(--color-text-inverse);
+}
+
+.btn-remove-file svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 /* Form Fields */
