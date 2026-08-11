@@ -46,12 +46,21 @@ api.interceptors.response.use(
       "An error occurred";
 
     // Prepare error report
+    // CUIDADO: error.config.data pode ser objeto ou FormData — só serializa se for string JSON
+    let payload_recebido = null;
+    try {
+      const raw = error.config?.data;
+      if (typeof raw === "string" && raw) payload_recebido = JSON.parse(raw);
+    } catch {
+      // Corpo não serializável (FormData etc.) — reporta sem payload
+    }
+
     const errorReport = {
       mensagem_erro: message,
       stack_erro: error.stack,
       rota_api: `${error.config?.method?.toUpperCase()} ${error.config?.url}`,
       status_code: status,
-      payload_recebido: error.config?.data ? JSON.parse(error.config.data) : null,
+      payload_recebido,
       origem_erro: 'frontend'
     };
 
@@ -302,11 +311,6 @@ export async function updateProviderConfig(provider, apiKey) {
 }
 
 /**
- * Update Preferred Provider
- * @param {string} provider - 'gemini', 'openai' or 'claude'
- * @returns {Promise<Object>} Update result
- */
-/**
  * Mark user plan as acknowledged
  * @returns {Promise<Object>} Update result
  */
@@ -320,15 +324,6 @@ export async function acknowledgePlan() {
  */
 export async function getAllUsers() {
   return api.get("/auth/users");
-}
-
-/**
- * Update Gemini API Key
- * @param {string} apiKey - Gemini API Key (or null to remove)
- * @returns {Promise<Object>} Update result
- */
-export async function updateGeminiKey(apiKey) {
-  return api.post("/auth/gemini-key", { apiKey });
 }
 
 /**
