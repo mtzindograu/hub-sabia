@@ -58,7 +58,7 @@ export async function generateEmbedding(text, options = {}) {
     const targetModel = model || (useGemini ? GEMINI_EMBEDDING_MODEL() : LOCAL_EMBEDDING_MODEL);
 
     if (targetModel === GEMINI_EMBEDDING_MODEL()) {
-      console.log(`[EMBEDDING] Using Google Gemini (${GEMINI_EMBEDDING_MODEL})`);
+      console.log(`[EMBEDDING] Using Google Gemini (${GEMINI_EMBEDDING_MODEL()})`);
       const result = await geminiService.generateEmbedding(text, { userApiKey });
       if (result.success) return result;
       console.warn(`[EMBEDDING] Gemini failed, falling back to local model: ${result.error}`);
