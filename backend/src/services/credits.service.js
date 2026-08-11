@@ -103,18 +103,19 @@ export const creditsService = {
   /**
    * Decrement credit only after successful API call
    * @param {string} userId - ID do usuário
-   * @returns {Promise<object|null>} Resultado do update (ou null se userId inválido)
+   * @returns {Promise<object|null>} Documento atualizado (ou null se userId inválido/sem saldo)
    */
   async decrementCredit(userId) {
-    if (!userId) return { matchedCount: 0, modifiedCount: 0 };
-    // Atomic decrement ensuring it never goes below 0
+    if (!userId) return null;
+    // Atomic decrement ensuring it never goes below 0; retorna o doc pós-débito
     return User.findOneAndUpdate(
       { 
         _id: userId,
         'usingOwnApiKey.active': { $ne: true },
         remainingCredits: { $gt: 0 }
       },
-      { $inc: { remainingCredits: -1 } }
+      { $inc: { remainingCredits: -1 } },
+      { new: true }
     );
   }
 };

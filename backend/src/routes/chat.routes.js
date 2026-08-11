@@ -23,9 +23,9 @@ const isValidObjectId = (v) => mongoose.Types.ObjectId.isValid(v);
 /**
  * @route   POST /api/chat/pergunta
  * @desc    Ask a question about editais
- * @access  Public (Optional Auth)
+ * @access  Private (requer login — anônimos são bloqueados no frontend e aqui)
  */
-router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
+router.post("/pergunta", authMiddleware, async (req, res) => {
   const startTime = Date.now();
   let trimmedQuestion = "";
   let campus_id = req.body.campus_id || null;
@@ -61,45 +61,41 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, error: "editalId inválido" });
     }
 
-    // --- CREDIT CHECK (apenas usuários logados; anônimos passam direto) ---
-    let creditStatus = null;
-    if (req.user) {
-      creditStatus = await creditsService.checkAndConsumeCredit(req.user);
-      if (!creditStatus.canProceed) {
-        return res.status(403).json({
-          success: false,
-          error: 'Créditos esgotados',
-          reason: creditStatus.reason,
-          resetIn: creditStatus.resetIn
-        });
-      }
+    // --- CREDIT CHECK (usuário sempre logado — authMiddleware) ---
+    const creditStatus = await creditsService.checkAndConsumeCredit(req.user);
+    if (!creditStatus.canProceed) {
+      return res.status(403).json({
+        success: false,
+        error: 'Créditos esgotados',
+        code: 'CREDITS_EXHAUSTED',
+        reason: creditStatus.reason,
+        resetIn: creditStatus.resetIn
+      });
     }
     // ---------------------
 
-    // Get or create conversation for logged in user (após o cheque de crédito)
+    // Get or create conversation (após o cheque de crédito)
     let conversation = null;
     let userApiKey = null;
     let preferredProvider = 'gemini';
 
-    if (req.user) {
-      // Fetch user with API Keys and preference
-      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key');
-      preferredProvider = user?.preferred_provider || 'gemini';
+    // Fetch user with API Keys and preference
+    const user = await User.findById(req.user._id).select('+gemini_api_key +groq_api_key');
+    preferredProvider = user?.preferred_provider || 'gemini';
 
-      if (preferredProvider === 'openai') {
-        userApiKey = user?.openai_api_key;
-      } else {
-        userApiKey = user?.gemini_api_key || null;
-      }
-
-      conversation = await chatService.getOrCreateConversation(
-        req.user._id,
-        editalId,
-        conversation_id,
-        trimmedQuestion
-      );
-      conversation_id = conversation?._id;
+    if (preferredProvider === 'groq') {
+      userApiKey = user?.groq_api_key;
+    } else {
+      userApiKey = user?.gemini_api_key || null;
     }
+
+    conversation = await chatService.getOrCreateConversation(
+      req.user._id,
+      editalId,
+      conversation_id,
+      trimmedQuestion
+    );
+    conversation_id = conversation?._id;
 
     // Process question through RAG pipeline (with user API key and provider preference)
     const result = await processQuestion(trimmedQuestion, editalId, {
@@ -107,9 +103,10 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       provider: preferredProvider
     });
 
-    // --- CREDIT CONSUMPTION (só logado e só se houve chamada de IA) ---
-    if (req.user && result.success && result.metadata?.usedAI !== false) {
-      await creditsService.decrementCredit(req.user._id);
+    // --- CREDIT CONSUMPTION (só se houve chamada de IA) ---
+    let updatedUser = null;
+    if (result.success && result.metadata?.usedAI !== false) {
+      updatedUser = await creditsService.decrementCredit(req.user._id);
     }
     // --------------------------
 
@@ -121,7 +118,7 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       resposta: result.response || (result.success ? "" : "Erro no processamento"),
       campus_id,
       edital_id: editalId || result.metadata?.editalId || null,
-      usuario_id: req.user?._id || null,
+      usuario_id: req.user._id,
       conversation_id,
       tempoRespostaMs,
       status: result.success ? "success" : "error",
@@ -132,7 +129,7 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
     const log = await chatService.logChatInteraction(logData);
 
     // Save detailed usage log if available
-    if (result.metadata?.usage && req.user) {
+    if (result.metadata?.usage) {
       UsageLog.create({
         usuario_id: req.user._id,
         provider: result.metadata.provider,
@@ -154,6 +151,10 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
       });
     }
 
+    // remaining PÓS-débito (o frontend atualiza o contador com este valor)
+    const remainingAfter = updatedUser?.remainingCredits
+      ?? (result.metadata?.usedAI === false ? creditStatus.creditsRemaining : creditStatus.creditsRemaining - 1);
+
     res.json({
       success: true,
       data: {
@@ -162,14 +163,12 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
         resposta: result.response,
         fontes: result.sources,
         conversationId: conversation_id,
-        creditStatus: req.user
-          ? {
-              remaining: creditStatus?.creditsRemaining ?? null,
-              resetIn: creditStatus?.resetIn ?? 0,
-              plan: creditStatus?.currentPlan ?? null,
-              usingOwnKey: !!creditStatus?.usingOwnKey,
-            }
-          : null,
+        creditStatus: {
+          remaining: Math.max(remainingAfter, 0),
+          resetIn: creditStatus.resetIn ?? 0,
+          plan: creditStatus.currentPlan ?? null,
+          usingOwnKey: !!creditStatus.usingOwnKey,
+        },
         metadata: {
           processingTime: result.metadata.processingTime,
           chunksUsed: result.metadata.chunksUsed,
@@ -192,7 +191,7 @@ router.post("/pergunta", optionalAuthMiddleware, async (req, res) => {
  * @desc    Ask a question with streaming response (optional)
  * @access  Public (Optional Auth)
  */
-router.post("/pergunta/stream", optionalAuthMiddleware, async (req, res) => {
+router.post("/pergunta/stream", authMiddleware, async (req, res) => {
   const startTime = Date.now();
   let campus_id = req.body.campus_id || null;
   let conversation_id = req.body.conversationId || null;
@@ -215,43 +214,39 @@ router.post("/pergunta/stream", optionalAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, error: "editalId inválido" });
     }
 
-    // --- CREDIT CHECK (só logado) ---
-    let creditStatus = null;
-    if (req.user) {
-      creditStatus = await creditsService.checkAndConsumeCredit(req.user);
-      if (!creditStatus.canProceed) {
-        return res.status(403).json({
-          success: false,
-          error: 'Créditos esgotados',
-          reason: creditStatus.reason,
-          resetIn: creditStatus.resetIn
-        });
-      }
+    // --- CREDIT CHECK (usuário sempre logado) ---
+    const creditStatus = await creditsService.checkAndConsumeCredit(req.user);
+    if (!creditStatus.canProceed) {
+      return res.status(403).json({
+        success: false,
+        error: 'Créditos esgotados',
+        code: 'CREDITS_EXHAUSTED',
+        reason: creditStatus.reason,
+        resetIn: creditStatus.resetIn
+      });
     }
     // ---------------------
 
-    // Get or create conversation for logged in user
+    // Get or create conversation
     let userApiKey = null;
     let preferredProvider = 'gemini';
 
-    if (req.user) {
-      const user = await User.findById(req.user._id).select('+gemini_api_key +openai_api_key');
-      preferredProvider = user?.preferred_provider || 'gemini';
+    const user = await User.findById(req.user._id).select('+gemini_api_key +groq_api_key');
+    preferredProvider = user?.preferred_provider || 'gemini';
 
-      if (preferredProvider === 'openai') {
-        userApiKey = user?.openai_api_key;
-      } else {
-        userApiKey = user?.gemini_api_key || null;
-      }
-
-      const conversation = await chatService.getOrCreateConversation(
-        req.user._id,
-        editalId,
-        conversation_id,
-        pergunta
-      );
-      conversation_id = conversation?._id;
+    if (preferredProvider === 'groq') {
+      userApiKey = user?.groq_api_key;
+    } else {
+      userApiKey = user?.gemini_api_key || null;
     }
+
+    const conversation = await chatService.getOrCreateConversation(
+      req.user._id,
+      editalId,
+      conversation_id,
+      pergunta
+    );
+    conversation_id = conversation?._id;
 
     // Recuperar contexto RAG real (chunks relevantes) — sem isso o stream responde sem os editais
     const { chunks } = await retrieveContext(pergunta.trim(), editalId, {
