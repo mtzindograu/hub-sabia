@@ -559,7 +559,19 @@ async function sendMessage() {
   const question = userInput.value.trim();
   if (!question || loading.value) return;
 
-  // Bloqueio local: sem créditos → erro no chat, NÃO faz a requisição
+  // A mensagem digitada SEMPRE aparece no chat (parece que foi enviada)
+  messages.value.push({
+    type: "user",
+    content: question,
+  });
+
+  // Clear input
+  userInput.value = "";
+  if (inputField.value) {
+    inputField.value.style.height = "auto";
+  }
+
+  // Bloqueio local: sem créditos → erro no chat após a mensagem, NÃO faz a requisição
   if (
     userData.value &&
     !userData.value.usingOwnApiKey?.active &&
@@ -574,18 +586,6 @@ async function sendMessage() {
       action: { to: "/perfil", label: "Usar minha chave de IA" },
     });
     return;
-  }
-
-  // Add user message
-  messages.value.push({
-    type: "user",
-    content: question,
-  });
-
-  // Clear input
-  userInput.value = "";
-  if (inputField.value) {
-    inputField.value.style.height = "auto";
   }
 
   // Show loading
