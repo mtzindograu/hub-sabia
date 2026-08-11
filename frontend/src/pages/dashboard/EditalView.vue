@@ -329,7 +329,7 @@ function formatDate(dateString) {
 }
 
 function goBack() {
-  router.push('/dashboard/editais')
+  router.push(isAdmin.value ? '/admin/editais' : '/dashboard/editais')
 }
 
 function goToChat() {
@@ -345,7 +345,7 @@ async function handleDelete() {
     const { deleteEdital } = await import('../../services/api.js')
     await deleteEdital(edital.value.id)
     success('Edital excluído com sucesso!')
-    router.push('/dashboard/editais')
+    router.push(isAdmin.value ? '/admin/editais' : '/dashboard/editais')
   } catch (error) {
     showError('Erro ao excluir edital: ' + (error.message || 'Tente novamente'))
   }

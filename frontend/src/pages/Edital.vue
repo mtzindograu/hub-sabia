@@ -150,7 +150,7 @@
               </svg>
               Analisar com IA
             </router-link>
-            <a v-if="edital.arquivo_url" :href="edital.arquivo_url" target="_blank" class="btn btn-secondary">
+            <a v-if="edital.arquivoUrl" :href="edital.arquivoUrl" target="_blank" class="btn btn-secondary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>

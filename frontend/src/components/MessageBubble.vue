@@ -42,7 +42,7 @@
             <div v-for="source in message.sources" :key="source.id" class="source-item">
               <div class="source-header">
                 <span class="source-title">{{ source.editalTitulo }}</span>
-                <span class="source-relevance" :class="source.relevance.toLowerCase()">
+                <span class="source-relevance" :class="(source.relevance || '').toLowerCase()">
                   {{ source.relevance }} relevância
                 </span>
               </div>
@@ -140,11 +140,18 @@ async function handleFeedback(value) {
   }
 }
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
 function formatText(text) {
   if (!text) return ''
-  
-  // Convert markdown-like formatting to HTML
-  let formatted = text
+
+  // SEGURANÇA: escapa TODO o HTML antes de aplicar markdown (previne XSS stored)
+  // A resposta da IA pode ecoar conteúdo do edital/usuário com tags maliciosas.
+  let formatted = escapeHtml(text)
     // Bold
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     // Italic
@@ -153,10 +160,10 @@ function formatText(text) {
     .replace(/\n/g, '<br>')
     // Lists
     .replace(/^- (.*?)(?=<br>|$)/gm, '<li>$1</li>')
-  
+
   // Wrap consecutive list items in ul
   formatted = formatted.replace(/(<li>.*<\/li>)+/g, '<ul>$&</ul>')
-  
+
   return formatted
 }
 

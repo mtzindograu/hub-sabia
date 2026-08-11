@@ -74,11 +74,6 @@
           <span v-if="loading" class="spinner"></span>
           <span v-else>Entrar</span>
         </button>
-
-        <div class="demo-credentials">
-          <p><strong>Credenciais de teste:</strong></p>
-          <p>Admin: admin@hubsabia.com / admin123</p>
-        </div>
       </form>
 
       <!-- Register Form -->
@@ -93,6 +88,7 @@
             type="text"
             class="form-input"
             placeholder="Seu nome completo"
+            required
           />
         </div>
 
@@ -462,20 +458,6 @@ watch(
   width: 100%;
   padding: 0.875rem;
   margin-top: 1rem;
-}
-
-.demo-credentials {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: var(--color-surface-2);
-  border-radius: var(--radius-md);
-  font-size: 0.8125rem;
-  color: var(--color-gray-600);
-  text-align: left;
-}
-
-.demo-credentials p {
-  margin: 0.25rem 0;
 }
 
 /* Alert */

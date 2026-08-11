@@ -146,7 +146,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { uploadEdital } from '../services/api.js'
-import { success, error as showError, info } from '../utils/toast.js'
+import { success, error as showError } from '../utils/toast.js'
 
 const emit = defineEmits(['close', 'success'])
 
@@ -198,6 +198,8 @@ const formatFileSize = (bytes) => {
 const handleUpload = async () => {
   if (!file.value) return
 
+  let progressInterval = null
+
   try {
     uploading.value = true
     progress.value = 10
@@ -209,7 +211,7 @@ const handleUpload = async () => {
     data.append('keywords', formData.keywords)
 
     // Simular progresso já que axios onUploadProgress é mais complexo aqui
-    const progressInterval = setInterval(() => {
+    progressInterval = setInterval(() => {
       if (progress.value < 90) {
         progress.value += Math.floor(Math.random() * 10)
       }
@@ -217,16 +219,18 @@ const handleUpload = async () => {
 
     const response = await uploadEdital(data)
     
-    clearInterval(progressInterval)
     progress.value = 100
     
     success('Edital enviado e processado com sucesso!')
+    // O interceptor do axios já desembrulha o body — response.data é o payload real
     emit('success', response.data)
     emit('close')
   } catch (err) {
     console.error('Erro no upload:', err)
     showError(err.message || 'Erro ao fazer upload do edital.')
   } finally {
+    // Sempre limpa o timer (sucesso OU falha)
+    if (progressInterval) clearInterval(progressInterval)
     uploading.value = false
   }
 }

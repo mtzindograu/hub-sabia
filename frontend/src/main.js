@@ -48,6 +48,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/dashboard/editais',
+    name: 'UserEditais',
+    component: () => import('./pages/dashboard/UserEditais.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/chat-alunos',
     name: 'AlunosChat',
     component: () => import('./pages/AlunosChat.vue'),
@@ -57,12 +63,6 @@ const routes = [
     path: '/perfil',
     name: 'UserProfile',
     component: () => import('./pages/ProfilePage.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/editais',
-    name: 'UserEditais',
-    component: () => import('./pages/dashboard/UserEditais.vue'),
     meta: { requiresAuth: true }
   },
   {

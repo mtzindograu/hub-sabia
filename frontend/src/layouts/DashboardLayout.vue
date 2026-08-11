@@ -3,8 +3,7 @@
     class="dashboard-layout"
     :class="{ 'sidebar-mobile-open': isMobileMenuOpen }"
   >
-    <!-- Toast Notifications -->
-    <ToastContainer />
+    <!-- ToastContainer vive APENAS no App.vue (evita toasts duplicados) -->
 
     <!-- Backdrop for mobile -->
     <div
@@ -166,7 +165,6 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { logout } from "../services/api.js";
-import ToastContainer from "../components/ToastContainer.vue";
 import ThemeToggle from "../components/ThemeToggle.vue";
 import { info } from "../utils/toast.js";
 
@@ -231,7 +229,7 @@ const menuItems = computed(() => {
       ]
     : [
         { path: "/dashboard", label: "Dashboard", icon: Icons.Dashboard },
-        { path: "/editais", label: "Editais", icon: Icons.Edital },
+        { path: "/dashboard/editais", label: "Editais", icon: Icons.Edital },
         { path: "/chat", label: "Chat IA", icon: Icons.Chat },
         { path: "/chat-alunos", label: "Chat Alunos", icon: Icons.Alunos },
         { path: "/perfil", label: "Meu Perfil", icon: Icons.Profile },
