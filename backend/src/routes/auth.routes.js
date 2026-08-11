@@ -153,7 +153,7 @@ router.post('/provider-config', authMiddleware, async (req, res) => {
   try {
     const { provider, apiKey } = req.body;
 
-    if (!provider || !['gemini', 'openai'].includes(provider)) {
+    if (!provider || !['gemini', 'groq'].includes(provider)) {
       return res.status(400).json({ success: false, error: 'Provider inválido ou não suportado' });
     }
 
@@ -186,7 +186,7 @@ router.post('/provider-preference', authMiddleware, async (req, res) => {
   try {
     const { provider } = req.body;
 
-    if (!provider || !['gemini', 'openai'].includes(provider)) {
+    if (!provider || !['gemini', 'groq'].includes(provider)) {
       return res.status(400).json({
         success: false,
         error: 'Provider inválido ou não suportado'

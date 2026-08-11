@@ -63,7 +63,7 @@ const userSchema = new mongoose.Schema({
     default: null,
     select: false, // Don't return by default in queries
   },
-  openai_api_key: {
+  groq_api_key: {
     type: String,
     default: null,
     select: false, // Don't return by default in queries
@@ -75,7 +75,7 @@ const userSchema = new mongoose.Schema({
   },
   preferred_provider: {
     type: String,
-    enum: ['gemini', 'openai', 'claude'],
+    enum: ['gemini', 'groq'],
     default: 'gemini',
   },
 }, {

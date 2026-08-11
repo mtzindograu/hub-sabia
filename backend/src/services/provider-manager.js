@@ -1,18 +1,16 @@
 import { geminiProvider, GEMINI_MODELS } from "./providers/gemini.provider.js";
-import { openaiProvider } from "./providers/openai.provider.js";
+import { groqProvider } from "./providers/groq.provider.js";
 import { sanitizeProviderMessage } from "../utils/provider-utils.js";
 
 /**
  * Provider Manager
- * Orchestrates multiple AI providers (Gemini, OpenAI, etc.)
+ * Orchestrates multiple AI providers (Gemini, Groq)
  */
 class ProviderManager {
   constructor() {
     this.providers = {
       gemini: geminiProvider,
-      openai: openaiProvider,
-      // claude: claudeProvider, // Temporarily disabled
-      // grok: null, // Future
+      groq: groqProvider,
     };
     this.defaultProvider = 'gemini';
   }
@@ -29,7 +27,7 @@ class ProviderManager {
 
   /**
    * Generate response (Chat) with optional fallback
-   * FALLBACK ORDER: OpenAI -> Gemini
+   * FALLBACK ORDER: Gemini <-> Groq (bidirecional)
    */
   async generateResponse(question, contextChunks = [], options = {}) {
     const { provider = this.defaultProvider, enableFallback = true } = options;
@@ -41,25 +39,26 @@ class ProviderManager {
       }
       const result = await selectedProvider.generateResponse(question, contextChunks, options);
       
-      // Automatic Fallback Logic
+      // Automatic Fallback Logic (bidirecional, sem repassar chave do provider de origem)
       if (!result.success && enableFallback) {
         const fallbackCategories = ['TIMEOUT', 'RATE_LIMIT', 'QUOTA_EXCEEDED'];
         
         if (fallbackCategories.includes(result.errorCategory)) {
-          
-          if (provider === 'openai') {
-            console.log(`[ProviderManager] Fallback path. Checking Gemini...`);
-            const hasGeminiKey = process.env.GEMINI_API_KEY;
-            if (hasGeminiKey) {
-              // NÃO repassar userApiKey: a chave OpenAI do usuário é inválida para o Gemini
-              const { userApiKey: _drop, ...fallbackOptions } = options;
-              return this.getProvider('gemini').generateResponse(question, contextChunks, {
-                ...fallbackOptions,
-                provider: 'gemini',
-              });
-            }
+          const fallbackName = provider === 'gemini' ? 'groq' : 'gemini';
+          const fallbackProvider = this.getProvider(fallbackName);
+          const fallbackHasSystemKey = fallbackName === 'gemini'
+            ? process.env.GEMINI_API_KEY
+            : process.env.GROQ_API_KEY;
+
+          if (fallbackProvider && fallbackHasSystemKey) {
+            console.log(`[ProviderManager] Fallback path: ${provider} -> ${fallbackName}`);
+            const { userApiKey: _drop, ...fallbackOptions } = options;
+            return fallbackProvider.generateResponse(question, contextChunks, {
+              ...fallbackOptions,
+              provider: fallbackName,
+            });
           }
-          
+
           return { success: false, error: "Primary and fallback providers failed or not configured", errorCategory: 'PROVIDER_UNAVAILABLE' };
         }
       }

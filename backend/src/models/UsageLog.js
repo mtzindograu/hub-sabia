@@ -14,7 +14,7 @@ const usageLogSchema = new mongoose.Schema({
   provider: {
     type: String,
     required: true,
-    enum: ['gemini', 'openai', 'claude', 'mistral', 'grok'],
+    enum: ['gemini', 'groq', 'openai', 'claude', 'mistral', 'grok'],
   },
   model: {
     type: String,

@@ -114,7 +114,7 @@ export async function registerUser(userData) {
     role: user.role,
     nome: user.nome,
     has_gemini_key: !!user.gemini_api_key,
-    has_openai_key: !!user.openai_api_key,
+    has_groq_key: !!user.groq_api_key,
     has_claude_key: !!user.claude_api_key,
     preferred_provider: user.preferred_provider,
     currentPlan: user.currentPlan,
@@ -135,7 +135,7 @@ export async function registerUser(userData) {
 export async function login(email, senha) {
   // Buscar usuário por email (normalizado: o schema lowercases no save, o login deve espelhar)
   // senha_hash tem select:false — precisa ser selecionado explicitamente para validar
-  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+senha_hash +gemini_api_key +openai_api_key +claude_api_key');
+  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+senha_hash +gemini_api_key +groq_api_key +claude_api_key');
 
   if (!user) {
     throw new Error('Email ou senha inválidos');
@@ -160,7 +160,7 @@ export async function login(email, senha) {
       role: user.role,
       nome: user.nome,
       has_gemini_key: !!user.gemini_api_key,
-      has_openai_key: !!user.openai_api_key,
+      has_groq_key: !!user.groq_api_key,
       has_claude_key: !!user.claude_api_key,
       preferred_provider: user.preferred_provider,
       currentPlan: user.currentPlan,
@@ -180,7 +180,7 @@ export async function login(email, senha) {
  */
 export async function getUserById(userId) {
   // Selecionar chaves para os flags
-  const user = await User.findById(userId).select('+gemini_api_key +openai_api_key +claude_api_key');
+  const user = await User.findById(userId).select('+gemini_api_key +groq_api_key +claude_api_key');
 
   if (!user) {
     return null;
@@ -193,7 +193,7 @@ export async function getUserById(userId) {
     role: user.role,
     nome: user.nome,
     has_gemini_key: !!user.gemini_api_key,
-    has_openai_key: !!user.openai_api_key,
+    has_groq_key: !!user.groq_api_key,
     has_claude_key: !!user.claude_api_key,
     preferred_provider: user.preferred_provider,
     currentPlan: user.currentPlan,
@@ -231,7 +231,7 @@ export async function updateUserProfile(userId, updateData) {
     userId,
     updateFields,
     { new: true, runValidators: true }
-  ).select('+gemini_api_key +openai_api_key +claude_api_key');
+  ).select('+gemini_api_key +groq_api_key +claude_api_key');
 
   if (!updatedUser) {
     throw new Error('Usuário não encontrado');
@@ -244,7 +244,7 @@ export async function updateUserProfile(userId, updateData) {
     role: updatedUser.role,
     nome: updatedUser.nome,
     has_gemini_key: !!updatedUser.gemini_api_key,
-    has_openai_key: !!updatedUser.openai_api_key,
+    has_groq_key: !!updatedUser.groq_api_key,
     has_claude_key: !!updatedUser.claude_api_key,
     preferred_provider: updatedUser.preferred_provider,
     currentPlan: updatedUser.currentPlan,
@@ -261,7 +261,7 @@ export async function updateUserProfile(userId, updateData) {
  */
 export async function listAllUsers() {
   const users = await User.find()
-    .select('-senha_hash +gemini_api_key +openai_api_key +claude_api_key')
+    .select('-senha_hash +gemini_api_key +groq_api_key +claude_api_key')
     .sort({ createdAt: -1 });
 
   return users.map(user => ({
@@ -271,7 +271,7 @@ export async function listAllUsers() {
     role: user.role,
     nome: user.nome,
     has_gemini_key: !!user.gemini_api_key,
-    has_openai_key: !!user.openai_api_key,
+    has_groq_key: !!user.groq_api_key,
     has_claude_key: !!user.claude_api_key,
     preferred_provider: user.preferred_provider,
     currentPlan: user.currentPlan,
@@ -301,7 +301,7 @@ export async function deleteUser(userId) {
 /**
  * Atualizar configuração de provider (API Key)
  * @param {string} userId - ID do usuário
- * @param {string} provider - Nome do provider (gemini, openai, claude)
+ * @param {string} provider - Nome do provider (gemini, groq)
  * @param {string|null} apiKey - Chave de API
  * @returns {Promise<boolean>} - true se atualizado
  */
@@ -310,10 +310,8 @@ export async function updateProviderConfig(userId, provider, apiKey) {
   
   if (provider === 'gemini') {
     updateField.gemini_api_key = apiKey;
-  } else if (provider === 'openai') {
-    updateField.openai_api_key = apiKey;
-  } else if (provider === 'claude') {
-    updateField.claude_api_key = apiKey;
+  } else if (provider === 'groq') {
+    updateField.groq_api_key = apiKey;
   } else {
     throw new Error('Provider não suportado');
   }
