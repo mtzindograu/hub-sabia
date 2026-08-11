@@ -74,8 +74,8 @@
       <div class="sidebar-user">
         <div class="user-avatar">{{ userInitials }}</div>
         <div v-show="!isCollapsed" class="user-info">
-          <span class="user-name">{{ userName }}</span>
           <span class="user-role" :class="userRole">{{ userRoleLabel }}</span>
+          <span class="user-name">{{ userName }}</span>
         </div>
       </div>
 
@@ -270,7 +270,15 @@ const menuItems = computed(() => {
 
 function isActive(path, isGroup = false) {
   const [pathname, queryString] = path.split("?");
-  if (route.path !== pathname && !route.path.startsWith(pathname + "/")) return false;
+  const isExact = route.path === pathname;
+  const isDescendant = route.path.startsWith(pathname + "/");
+
+  // Itens "raiz" que são prefixo de sub-rotas de OUTROS itens (ex.: /dashboard vs
+  // /dashboard/editais) só ativam no match exato. Grupos (com filhos) e rotas com
+  // :id (ex.: /chat/:id) seguem o prefixo normalmente.
+  const exactOnly = !isGroup && (pathname === "/dashboard" || pathname === "/admin/dashboard");
+  if (!isExact && (exactOnly || !isDescendant)) return false;
+
   if (queryString) {
     const expected = new URLSearchParams(queryString);
     return [...expected.entries()].every(([key, value]) => route.query[key] === value);
@@ -566,15 +574,12 @@ onMounted(() => {
 
 .btn-ghost:hover { background: var(--color-surface-2); color: var(--color-primary-700); }
 .page-content { flex: 1; min-width: 0; padding: 2rem; overflow-y: auto; }
-.sidebar-backdrop { position: fixed; inset: 0; z-index: 990; background: var(--color-gray-900); opacity: 0.55; }
+.sidebar-backdrop { position: fixed; inset: 0; z-index: 990; background: rgb(0, 0, 0); opacity: 0.55; }
 .show-mobile { display: none; }
 
 @media (max-width: 1024px) {
   .sidebar { position: fixed; transform: translateX(-100%); }
   .sidebar.mobile-open { width: 280px; transform: translateX(0); }
-  .sidebar.mobile-open .logo-text,
-  .sidebar.mobile-open .user-info,
-  .sidebar.mobile-open .nav-label { display: inline; }
   .show-mobile { display: flex; }
   .hide-mobile { display: none; }
   .top-header { padding-inline: 1rem; }
