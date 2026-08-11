@@ -295,12 +295,21 @@ export async function updateProfile(updateData) {
 
 /**
  * Update Provider API Key
- * @param {string} provider - 'gemini', 'openai' or 'claude'
+ * @param {string} provider - 'gemini', 'groq'
  * @param {string} apiKey - API Key (or null to remove)
  * @returns {Promise<Object>} Update result
  */
 export async function updateProviderConfig(provider, apiKey) {
   return api.post("/auth/provider-config", { provider, apiKey });
+}
+
+/**
+ * Update Preferred Provider
+ * @param {string} provider - 'gemini' or 'groq'
+ * @returns {Promise<Object>} Update result
+ */
+export async function updatePreferredProvider(provider) {
+  return api.post("/auth/provider-preference", { provider });
 }
 
 /**

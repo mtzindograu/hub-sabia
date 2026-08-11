@@ -162,31 +162,31 @@
               </div>
             </div>
 
-            <!-- OpenAI -->
-            <div class="provider-item" :class="{ 'is-active': hasOpenAIKey }">
+            <!-- Groq -->
+            <div class="provider-item" :class="{ 'is-active': hasGroqKey }">
               <div class="provider-header">
                 <div class="provider-info">
-                  <span class="provider-name">OpenAI (GPT)</span>
-                  <span class="provider-badge" :class="hasOpenAIKey ? 'active' : 'inactive'">
-                    {{ hasOpenAIKey ? 'Conectado' : 'Não configurado' }}
+                  <span class="provider-name">Groq (Llama)</span>
+                  <span class="provider-badge" :class="hasGroqKey ? 'active' : 'inactive'">
+                    {{ hasGroqKey ? 'Conectado' : 'Não configurado' }}
                   </span>
                 </div>
-                <button @click="toggleProvider('openai')" class="btn-toggle">
-                  {{ activeProviderForm === 'openai' ? 'Fechar' : (hasOpenAIKey ? 'Alterar' : 'Configurar') }}
+                <button @click="toggleProvider('groq')" class="btn-toggle">
+                  {{ activeProviderForm === 'groq' ? 'Fechar' : (hasGroqKey ? 'Alterar' : 'Configurar') }}
                 </button>
               </div>
 
-              <div v-if="activeProviderForm === 'openai'" class="provider-form">
+              <div v-if="activeProviderForm === 'groq'" class="provider-form">
                 <div class="input-group">
-                  <label>Chave API OpenAI</label>
+                  <label>Chave API Groq</label>
                   <div class="password-input">
                     <input 
-                      :type="showKeys.openai ? 'text' : 'password'" 
-                      v-model="providerKeys.openai" 
-                      placeholder="sk-..."
+                      :type="showKeys.groq ? 'text' : 'password'" 
+                      v-model="providerKeys.groq" 
+                      placeholder="gsk_..."
                     />
-                    <button @click="showKeys.openai = !showKeys.openai" class="btn-show-hide" type="button">
-                      <svg v-if="showKeys.openai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button @click="showKeys.groq = !showKeys.groq" class="btn-show-hide" type="button">
+                      <svg v-if="showKeys.groq" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                         <line x1="1" y1="1" x2="23" y2="23"></line>
                       </svg>
@@ -198,8 +198,36 @@
                   </div>
                 </div>
                 <div class="provider-actions">
-                  <button class="btn-save" @click="handleSaveKey('openai')" :disabled="loading || !providerKeys.openai">Salvar</button>
-                  <button v-if="hasOpenAIKey" class="btn-remove" @click="handleRemoveKey('openai')" :disabled="loading">Remover</button>
+                  <button class="btn-save" @click="handleSaveKey('groq')" :disabled="loading || !providerKeys.groq">Salvar</button>
+                  <button v-if="hasGroqKey" class="btn-remove" @click="handleRemoveKey('groq')" :disabled="loading">Remover</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preferência de provider -->
+            <div class="provider-item">
+              <div class="provider-header">
+                <div class="provider-info">
+                  <span class="provider-name">IA preferida</span>
+                  <span class="provider-badge active">Gemini ou Groq</span>
+                </div>
+              </div>
+              <div class="provider-form">
+                <div class="preference-options">
+                  <button
+                    class="pref-option"
+                    :class="{ selected: preferredProvider === 'gemini' }"
+                    @click="setPreferredProvider('gemini')"
+                  >
+                    Gemini 2.5 Flash
+                  </button>
+                  <button
+                    class="pref-option"
+                    :class="{ selected: preferredProvider === 'groq' }"
+                    @click="setPreferredProvider('groq')"
+                  >
+                    Groq (Llama 3.3)
+                  </button>
                 </div>
               </div>
             </div>
@@ -271,7 +299,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
-import { logout, getCurrentUser, updateProviderConfig } from '../services/api.js'
+import { logout, getCurrentUser, updateProviderConfig, updatePreferredProvider } from '../services/api.js'
 import { info, success, error as toastError } from '../utils/toast.js'
 
 const router = useRouter()
@@ -283,11 +311,11 @@ const preferredProvider = ref('gemini')
 const activeProviderForm = ref(null)
 const providerKeys = ref({
   gemini: '',
-  openai: ''
+  groq: ''
 })
 const showKeys = ref({
   gemini: false,
-  openai: false
+  groq: false
 })
 
 const userName = computed(() => currentUser.value?.nome || currentUser.value?.email?.split('@')[0] || 'Usuário')
@@ -303,7 +331,7 @@ const memberSince = computed(() => currentUser.value?.createdAt ? new Date(curre
 
 // Flags for keys
 const hasGeminiKey = computed(() => !!currentUser.value?.has_gemini_key)
-const hasOpenAIKey = computed(() => !!currentUser.value?.has_openai_key)
+const hasGroqKey = computed(() => !!currentUser.value?.has_groq_key)
 
 const creditPercentage = computed(() => {
   const credits = currentUser.value?.remainingCredits || 0;
@@ -387,6 +415,21 @@ async function handleRemoveKey(provider) {
     toastError(err.message || 'Erro ao conectar com o servidor')
   } finally {
     loading.value = false
+  }
+}
+
+async function setPreferredProvider(provider) {
+  if (preferredProvider.value === provider) return
+  preferredProvider.value = provider
+  try {
+    const response = await updatePreferredProvider(provider)
+    if (response.success) {
+      success(`IA preferida: ${provider === 'gemini' ? 'Gemini' : 'Groq'}`)
+    }
+  } catch (err) {
+    toastError(err.message || 'Erro ao salvar preferência')
+    // Reverte em caso de falha
+    await fetchUserData()
   }
 }
 
@@ -942,6 +985,41 @@ onMounted(async () => {
 
   .profile-actions {
     flex-direction: column;
+  }
+}
+
+/* Preferência de IA */
+.preference-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.pref-option {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pref-option:hover {
+  border-color: var(--color-primary-300);
+}
+
+.pref-option.selected {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-500);
+  color: var(--color-primary-700);
+}
+
+@media (max-width: 480px) {
+  .preference-options {
+    grid-template-columns: 1fr;
   }
 }
 </style>
