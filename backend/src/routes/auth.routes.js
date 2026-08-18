@@ -17,6 +17,9 @@ import { authMiddleware, isAdmin } from '../middleware/auth.middleware.js';
 import providerManager from '../services/provider-manager.js';
 
 const router = Router();
+export function isDuplicateEmailError(error) {
+  return error?.code === 11000 || error?.message === 'Email já cadastrado';
+}
 
 // Anti força-bruta: login/registro limitados por IP
 const authLimiter = rateLimit({
@@ -81,6 +84,13 @@ router.post('/register', authLimiter, async (req, res) => {
 
   } catch (error) {
     console.error('[AUTH] Register error:', error);
+    if (isDuplicateEmailError(error)) {
+      return res.status(409).json({
+        success: false,
+        error: 'Este email já está cadastrado.',
+        message: 'Este email já está cadastrado.',
+      });
+    }
     res.status(500).json({ success: false, error: 'Erro interno', message: error.message });
   }
 });

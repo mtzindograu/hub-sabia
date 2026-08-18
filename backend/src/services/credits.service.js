@@ -10,18 +10,70 @@ const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas
 
 export const creditsService = {
   /**
+   * Normaliza campos de crédito de documentos antigos sem alterar saldo válido.
+   */
+  normalizeUserCreditFields(user) {
+    const defaultPlan = { id: 'free_hubsabia', name: 'Plano Gratuito HubSabia', type: 'free' };
+    const defaultOwnKey = { active: false, provider: null, configuredAt: null };
+    const parsedReset = user?.lastCreditReset ? new Date(user.lastCreditReset) : null;
+
+    return {
+      remainingCredits: Number.isFinite(user?.remainingCredits) && user.remainingCredits >= 0
+        ? user.remainingCredits
+        : DAILY_CREDIT_LIMIT,
+      lastCreditReset: parsedReset && !Number.isNaN(parsedReset.getTime()) ? parsedReset : new Date(),
+      currentPlan: user?.currentPlan ?? defaultPlan,
+      usingOwnApiKey: user?.usingOwnApiKey ?? defaultOwnKey,
+      planAcknowledged: user?.planAcknowledged ?? false,
+    };
+  },
+
+  /**
+   * Persiste campos ausentes e renova saldo vencido para o usuário.
+   */
+  async syncStoredCredits(userId) {
+    if (!userId) return null;
+
+    const user = await User.findById(userId)
+      .select('+gemini_api_key +groq_api_key +claude_api_key')
+      .lean();
+    if (!user) return null;
+
+    const normalized = this.normalizeUserCreditFields(user);
+    const now = new Date();
+    const parsedReset = user.lastCreditReset ? new Date(user.lastCreditReset) : null;
+    const resetInvalid = !parsedReset || Number.isNaN(parsedReset.getTime());
+    const shouldReset = !normalized.usingOwnApiKey?.active
+      && now - normalized.lastCreditReset >= RESET_INTERVAL_MS;
+    const update = {};
+
+    if (!Number.isFinite(user.remainingCredits) || user.remainingCredits < 0 || shouldReset) {
+      update.remainingCredits = shouldReset ? DAILY_CREDIT_LIMIT : normalized.remainingCredits;
+    }
+    if (resetInvalid || shouldReset) {
+      update.lastCreditReset = shouldReset ? now : normalized.lastCreditReset;
+    }
+    if (user.currentPlan == null) update.currentPlan = normalized.currentPlan;
+    if (user.usingOwnApiKey == null) update.usingOwnApiKey = normalized.usingOwnApiKey;
+    if (user.planAcknowledged == null) update.planAcknowledged = normalized.planAcknowledged;
+
+    if (Object.keys(update).length === 0) return user;
+    return User.findByIdAndUpdate(userId, { $set: update }, { new: true })
+      .select('+gemini_api_key +groq_api_key +claude_api_key')
+      .lean();
+  },
+
+  /**
    * Helper to ensure user document has valid credit fields (Retrocompatibilidade)
    */
   _ensureUserFields(user) {
-    const defaultPlan = { id: 'free_hubsabia', name: 'Plano Gratuito HubSabia', type: 'free' };
-    const defaultOwnKey = { active: false, provider: null, configuredAt: null };
-    
-    return {
-      remainingCredits: user.remainingCredits ?? DAILY_CREDIT_LIMIT,
-      lastCreditReset: user.lastCreditReset ?? new Date(),
-      currentPlan: user.currentPlan ?? defaultPlan,
-      usingOwnApiKey: user.usingOwnApiKey ?? defaultOwnKey
-    };
+    return this.normalizeUserCreditFields(user);
+  },
+  shouldConsumeStreamCredit({ completed, hasError, aborted, hasResponse }) {
+    return completed === true
+      && hasError !== true
+      && aborted !== true
+      && hasResponse === true;
   },
 
   /**

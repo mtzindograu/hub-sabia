@@ -6,6 +6,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { creditsService } from './credits.service.js';
 
 const JWT_EXPIRATION = '24h';
 
@@ -133,41 +134,37 @@ export async function registerUser(userData) {
  * @returns {Promise<object>} - Usuário e token
  */
 export async function login(email, senha) {
-  // Buscar usuário por email (normalizado: o schema lowercases no save, o login deve espelhar)
-  // senha_hash tem select:false — precisa ser selecionado explicitamente para validar
   const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+senha_hash +gemini_api_key +groq_api_key +claude_api_key');
 
   if (!user) {
     throw new Error('Email ou senha inválidos');
   }
 
-  // Validar senha
   const senhaValida = await user.validarSenha(senha);
-
   if (!senhaValida) {
     throw new Error('Email ou senha inválidos');
   }
 
-  // Gerar token
-  const token = generateToken(user);
+  const syncedUser = await creditsService.syncStoredCredits(user._id);
+  const effectiveUser = syncedUser || user;
+  const token = generateToken(effectiveUser);
 
-  // Retornar usuário (sem senha) e token — contrato completo (igual registerUser/getUserById)
   return {
     user: {
-      id: user._id.toString(),
-      _id: user._id.toString(),
-      email: user.email,
-      role: user.role,
-      nome: user.nome,
-      has_gemini_key: !!user.gemini_api_key,
-      has_groq_key: !!user.groq_api_key,
-      has_claude_key: !!user.claude_api_key,
-      preferred_provider: user.preferred_provider,
-      currentPlan: user.currentPlan,
-      remainingCredits: user.remainingCredits,
-      lastCreditReset: user.lastCreditReset,
-      usingOwnApiKey: user.usingOwnApiKey,
-      planAcknowledged: user.planAcknowledged || false,
+      id: effectiveUser._id.toString(),
+      _id: effectiveUser._id.toString(),
+      email: effectiveUser.email,
+      role: effectiveUser.role,
+      nome: effectiveUser.nome,
+      has_gemini_key: !!effectiveUser.gemini_api_key,
+      has_groq_key: !!effectiveUser.groq_api_key,
+      has_claude_key: !!effectiveUser.claude_api_key,
+      preferred_provider: effectiveUser.preferred_provider,
+      currentPlan: effectiveUser.currentPlan,
+      remainingCredits: effectiveUser.remainingCredits,
+      lastCreditReset: effectiveUser.lastCreditReset,
+      usingOwnApiKey: effectiveUser.usingOwnApiKey,
+      planAcknowledged: effectiveUser.planAcknowledged || false,
     },
     token
   };
@@ -179,8 +176,7 @@ export async function login(email, senha) {
  * @returns {Promise<object|null>} - Usuário ou null
  */
 export async function getUserById(userId) {
-  // Selecionar chaves para os flags
-  const user = await User.findById(userId).select('+gemini_api_key +groq_api_key +claude_api_key');
+  const user = await creditsService.syncStoredCredits(userId);
 
   if (!user) {
     return null;
@@ -204,6 +200,7 @@ export async function getUserById(userId) {
     createdAt: user.createdAt,
   };
 }
+
 
 /**
  * Atualizar perfil do usuário

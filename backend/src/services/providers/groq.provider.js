@@ -14,8 +14,8 @@ dotenv.config();
 const REQUEST_TIMEOUT_MS = 20000;
 
 export const GROQ_MODELS = {
-  CHAT: "llama-3.3-70b-versatile",
-  FAST: "llama-3.1-8b-instant",
+  CHAT: "openai/gpt-oss-120b",
+  FAST: "openai/gpt-oss-20b",
 };
 
 let DEFAULT_MODEL = GROQ_MODELS.CHAT;

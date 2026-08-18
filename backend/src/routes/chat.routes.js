@@ -164,10 +164,10 @@ router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
       });
     }
 
-    // remaining PÓS-débito (o frontend atualiza o contador com este valor)
-    const remainingAfter = updatedUser?.remainingCredits
-      ?? (result.metadata?.usedAI === false ? creditStatus.creditsRemaining : creditStatus.creditsRemaining - 1);
-
+    // O saldo retornado é sempre o valor persistido; chave própria não debita.
+    const remainingAfter = creditStatus.usingOwnKey || result.metadata?.usedAI === false
+      ? creditStatus.creditsRemaining
+      : (updatedUser?.remainingCredits ?? Math.max(creditStatus.creditsRemaining - 1, 0));
     res.json({
       success: true,
       data: {
@@ -275,9 +275,11 @@ router.post("/pergunta/stream", chatLimiter, authMiddleware, async (req, res) =>
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    // Aborta a geração se o cliente desconectar (evita custo desnecessário)
     let aborted = false;
-    req.on("close", () => { aborted = true; });
+    req.on("aborted", () => { aborted = true; });
+    res.on("close", () => {
+      if (!res.writableEnded) aborted = true;
+    });
 
     const stream = providerManager.streamResponse(pergunta.trim(), chunks, {
       userApiKey,
@@ -286,16 +288,20 @@ router.post("/pergunta/stream", chatLimiter, authMiddleware, async (req, res) =>
 
     let fullResponse = "";
     let finalMetadata = null;
+    let streamCompleted = false;
+    let streamFailed = false;
 
     for await (const chunk of stream) {
       if (aborted) break;
 
       if (chunk.error) {
+        streamFailed = true;
         res.write(`data: ${JSON.stringify({ error: chunk.error, errorCategory: chunk.errorCategory })}\n\n`);
         break;
       }
 
       if (chunk.done) {
+        streamCompleted = true;
         finalMetadata = chunk.metadata;
         res.write(`data: ${JSON.stringify({ done: true, sources: [], metadata: finalMetadata, conversationId: conversation_id })}\n\n`);
       } else {
@@ -304,8 +310,15 @@ router.post("/pergunta/stream", chatLimiter, authMiddleware, async (req, res) =>
       }
     }
 
-    // Log interaction after stream finishes (best effort)
-    if (fullResponse) {
+    const streamSucceeded = creditsService.shouldConsumeStreamCredit({
+      completed: streamCompleted,
+      hasError: streamFailed,
+      aborted,
+      hasResponse: fullResponse.length > 0,
+    });
+
+    // Log e débito somente após conclusão explícita sem erro.
+    if (streamSucceeded) {
       const logData = {
         pergunta,
         resposta: fullResponse,
@@ -318,12 +331,7 @@ router.post("/pergunta/stream", chatLimiter, authMiddleware, async (req, res) =>
         metadata: { ...(finalMetadata || {}), chunksUsed: chunks.length }
       };
       chatService.logChatInteraction(logData).catch(e => console.error("Stream log error:", e));
-
-      // --- CREDIT CONSUMPTION (só logado e só com resposta) ---
-      if (req.user) {
-        await creditsService.decrementCredit(req.user._id);
-      }
-      // --------------------------
+      await creditsService.decrementCredit(req.user._id);
     }
 
     res.end();

@@ -33,3 +33,46 @@ test("usuário com 0 créditos e reset válido é bloqueado", async () => {
   assert.equal(status.canProceed, false);
   assert.equal(status.reason, "CREDITS_EXHAUSTED");
 });
+test("normaliza usuário legado sem campos de crédito", () => {
+  const normalized = creditsService.normalizeUserCreditFields({
+    remainingCredits: undefined,
+    lastCreditReset: undefined,
+    currentPlan: undefined,
+    usingOwnApiKey: undefined,
+    planAcknowledged: undefined,
+  });
+
+  assert.equal(normalized.remainingCredits, 20);
+  assert.ok(normalized.lastCreditReset instanceof Date);
+  assert.deepEqual(normalized.currentPlan, {
+    id: "free_hubsabia",
+    name: "Plano Gratuito HubSabia",
+    type: "free",
+  });
+  assert.deepEqual(normalized.usingOwnApiKey, {
+    active: false,
+    provider: null,
+    configuredAt: null,
+  });
+  assert.equal(normalized.planAcknowledged, false);
+});
+test("chave própria mantém saldo sem consumo", async () => {
+  const status = await creditsService.checkAndConsumeCredit({
+    _id: "own-key-user",
+    remainingCredits: 15,
+    lastCreditReset: new Date(),
+    currentPlan: { id: "free" },
+    usingOwnApiKey: { active: true, provider: "gemini" },
+  });
+
+  assert.equal(status.canProceed, true);
+  assert.equal(status.usingOwnKey, true);
+  assert.equal(status.creditsRemaining, 15);
+});
+
+test("stream só consome após conclusão sem erro", () => {
+  assert.equal(creditsService.shouldConsumeStreamCredit({ completed: true, hasError: false, aborted: false, hasResponse: true }), true);
+  assert.equal(creditsService.shouldConsumeStreamCredit({ completed: true, hasError: true, aborted: false, hasResponse: true }), false);
+  assert.equal(creditsService.shouldConsumeStreamCredit({ completed: false, hasError: false, aborted: false, hasResponse: true }), false);
+  assert.equal(creditsService.shouldConsumeStreamCredit({ completed: true, hasError: false, aborted: true, hasResponse: true }), false);
+});
