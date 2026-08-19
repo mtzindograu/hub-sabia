@@ -422,9 +422,11 @@ export async function autoDiscoverModels(apiKey = null) {
                        models.find(m => m.name.includes("embedding-2") && isStable(m));
 
     if (flashModel) {
-      console.log(
-        `[Gemini] Stable chat model kept fixed at ${GEMINI_MODELS.CHAT}. Discovered: ${flashModel.name}`
-      );
+      console.log(`[Gemini] Stability Mode: Using ${flashModel.name} for ALL tasks.`);
+      GEMINI_MODELS.CHAT = flashModel.name;
+      GEMINI_MODELS.FAST = flashModel.name;
+      GEMINI_MODELS.PRO = flashModel.name; 
+      DEFAULT_MODEL = flashModel.name;
     }
 
     if (embedModel) {
