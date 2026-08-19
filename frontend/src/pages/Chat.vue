@@ -171,6 +171,7 @@
           :is-visible="isPlanSelectionModalVisible" 
           :using-own-key="!!userData?.usingOwnApiKey?.active"
           :has-own-key="!!userData?.has_gemini_key || !!userData?.has_groq_key"
+          :plan-acknowledged="isPlanAcknowledged"
           @select-plan="handleSelectPlan"
         />
 
@@ -317,7 +318,7 @@
                 <button
                   type="submit"
                   class="send-button"
-                  :disabled="!userInput.trim() || loading"
+                  :disabled="!userInput.trim() || loading || !creditStateReady"
                 >
                   <svg
                     viewBox="0 0 24 24"
@@ -342,7 +343,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import MessageBubble from "../components/MessageBubble.vue";
 import CurrentPlanCard from "../components/CurrentPlanCard.vue";
@@ -387,6 +388,9 @@ const creditsExhausted = computed(
 const isPlanSelectionModalVisible = ref(false);
 const isPlanAcknowledged = ref(true);
 const authGateVisible = ref(false);
+const creditStateReady = ref(false);
+let isChatMounted = true;
+let userDataSyncVersion = 0;
 
 // History management
 const conversations = ref([]);
@@ -396,12 +400,13 @@ const currentConversationId = ref(null);
 onMounted(async () => {
   isLoggedIn.value = !!localStorage.getItem("auth_token");
 
-  await loadEditais();
-
   if (isLoggedIn.value) {
+    await checkUserKey();
     fetchConversations();
-    checkUserKey();
   }
+  creditStateReady.value = true;
+
+  await loadEditais();
 
   // Check for edital ID in route
   if (route.params.id) {
@@ -416,12 +421,22 @@ onMounted(async () => {
   scrollToBottom();
 });
 
+onUnmounted(() => {
+  isChatMounted = false;
+});
+
 async function refreshUserData() {
+  const requestVersion = ++userDataSyncVersion;
   try {
     const response = await getCurrentUser();
     // O interceptor retorna {success, data} — extrair o usuário real
     const user = response?.data || response;
-    if (user && user.email) {
+    if (
+      isChatMounted &&
+      requestVersion === userDataSyncVersion &&
+      user &&
+      user.email
+    ) {
       userData.value = user;
       isPlanAcknowledged.value = !!user.planAcknowledged;
       // Update local cache (objeto usuário real — nunca o wrapper)
@@ -432,7 +447,7 @@ async function refreshUserData() {
   }
 }
 
-function checkUserKey() {
+async function checkUserKey() {
   const stored = localStorage.getItem("user");
   if (stored) {
     try {
@@ -447,7 +462,7 @@ function checkUserKey() {
   }
   
   if (isLoggedIn.value) {
-    refreshUserData();
+    await refreshUserData();
   }
   
   isPlanSelectionModalVisible.value = isLoggedIn.value && !isPlanAcknowledged.value;
@@ -567,6 +582,9 @@ async function sendMessage() {
   const question = userInput.value.trim();
   if (!question || loading.value) return;
 
+  // Invalidar uma sincronização iniciada antes desta pergunta.
+  userDataSyncVersion += 1;
+
   // A mensagem digitada SEMPRE aparece no chat (parece que foi enviada)
   messages.value.push({
     type: "user",
@@ -619,6 +637,7 @@ async function sendMessage() {
 
     // Contador vivo: atualiza créditos com o valor pós-débito da API
     if (response.data.creditStatus && userData.value) {
+      userDataSyncVersion += 1;
       userData.value = {
         ...userData.value,
         remainingCredits: response.data.creditStatus.remaining,
@@ -633,6 +652,7 @@ async function sendMessage() {
     } else if (error.code === "CREDITS_EXHAUSTED") {
       // Sessão dessincronizada: sincroniza o saldo e avisa no fluxo
       if (userData.value) {
+        userDataSyncVersion += 1;
         userData.value = { ...userData.value, remainingCredits: 0 };
         localStorage.setItem("user", JSON.stringify(userData.value));
       }

@@ -13,7 +13,7 @@
           <h3>Créditos diários</h3>
           <p>20 créditos por dia, renovação automática. Sem configurar nada.</p>
           <button
-            v-if="!usingOwnKey"
+            v-if="!usingOwnKey && planAcknowledged"
             class="btn btn-primary btn-block"
             disabled
           >Em uso</button>
@@ -63,6 +63,10 @@ defineProps({
     default: false
   },
   hasOwnKey: {
+    type: Boolean,
+    default: false
+  },
+  planAcknowledged: {
     type: Boolean,
     default: false
   }
