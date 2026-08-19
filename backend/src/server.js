@@ -31,6 +31,9 @@ const __dirname = dirname(__filename);
 
 // Initialize Express app
 const app = express();
+
+// Render executa a aplicacao atras de um reverse proxy.
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3001;
 
 // ============================================
