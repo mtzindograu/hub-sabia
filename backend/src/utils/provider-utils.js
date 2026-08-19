@@ -45,23 +45,71 @@ export function sanitizeProviderMessage(message) {
  * @returns {Object} Normalized error
  */
 export function normalizeProviderError(error, provider) {
-  const message = sanitizeProviderMessage(error.message || error.toString());
+  const rawMessage = String(error?.message || error?.toString?.() || "Erro desconhecido");
+  const message = sanitizeProviderMessage(rawMessage);
+  const normalizedMessage = rawMessage.toLowerCase();
+  const status = Number.isFinite(Number(error?.status)) ? Number(error.status) : undefined;
+  const code = String(error?.code || "").toLowerCase();
   let category = 'UNKNOWN';
 
-  // Category mapping
-  if (message.includes('401') || message.includes('API key') || message.includes('invalid_api_key')) {
+  // Authentication must take precedence over generic status/message matches.
+  if (
+    status === 401
+    || code === 'invalid_api_key'
+    || normalizedMessage.includes('invalid api key')
+    || normalizedMessage.includes('api key')
+    || normalizedMessage.includes('authentication')
+    || normalizedMessage.includes('unauthorized')
+  ) {
     category = 'AUTH_ERROR';
-  } else if (message.includes('429') || message.includes('Rate limit')) {
-    category = 'RATE_LIMIT';
-  } else if (message.includes('quota') || message.includes('billing')) {
-    category = 'QUOTA_EXCEEDED';
-  } else if (message.includes('timeout') || message.includes('deadline')) {
-    category = 'TIMEOUT';
-  } else if (message.includes('not configured') || message.includes('not supported')) {
+  } else if (
+    code === 'model_not_found'
+    || normalizedMessage.includes('model not found')
+    || normalizedMessage.includes('model_not_found')
+    || normalizedMessage.includes('modelo não disponível')
+    || normalizedMessage.includes('modelo nao disponivel')
+    || (status === 404 && normalizedMessage.includes('model'))
+  ) {
+    category = 'MODEL_UNAVAILABLE';
+  } else if (
+    status === 503
+    || normalizedMessage.includes('service unavailable')
+    || normalizedMessage.includes('provider unavailable')
+    || normalizedMessage.includes('temporarily unavailable')
+    || normalizedMessage.includes('indisponível')
+    || normalizedMessage.includes('overloaded')
+    || normalizedMessage.includes('busy')
+  ) {
     category = 'PROVIDER_UNAVAILABLE';
-  } else if (message.includes('overloaded') || message.includes('busy')) {
+  } else if (
+    status === 429
+    || normalizedMessage.includes('429')
+    || normalizedMessage.includes('rate limit')
+  ) {
     category = 'RATE_LIMIT';
-  } else if (message.includes('400') || message.includes('invalid_request')) {
+  } else if (
+    normalizedMessage.includes('quota')
+    || normalizedMessage.includes('billing')
+    || normalizedMessage.includes('resource exhausted')
+  ) {
+    category = 'QUOTA_EXCEEDED';
+  } else if (
+    status === 408
+    || normalizedMessage.includes('timeout')
+    || normalizedMessage.includes('deadline')
+  ) {
+    category = 'TIMEOUT';
+  } else if (
+    normalizedMessage.includes('not configured')
+    || normalizedMessage.includes('not supported')
+  ) {
+    category = 'PROVIDER_UNAVAILABLE';
+  } else if (
+    status === 400
+    || normalizedMessage.includes('400')
+    || normalizedMessage.includes('invalid_request')
+    || normalizedMessage.includes('bad request')
+  ) {
     category = 'INVALID_REQUEST';
   }
 
@@ -69,6 +117,7 @@ export function normalizeProviderError(error, provider) {
     originalMessage: message,
     category,
     provider,
+    ...(status === undefined ? {} : { status }),
     timestamp: new Date()
   };
 }

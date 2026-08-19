@@ -1,6 +1,35 @@
 import { geminiProvider, GEMINI_MODELS } from "./providers/gemini.provider.js";
 import { groqProvider } from "./providers/groq.provider.js";
-import { sanitizeProviderMessage } from "../utils/provider-utils.js";
+import { normalizeProviderError, sanitizeProviderMessage } from "../utils/provider-utils.js";
+
+const FALLBACK_CATEGORIES = new Set([
+  'TIMEOUT',
+  'RATE_LIMIT',
+  'QUOTA_EXCEEDED',
+  'PROVIDER_UNAVAILABLE',
+  'MODEL_UNAVAILABLE',
+]);
+
+const normalizeFailure = (error, provider) => {
+  const normalized = normalizeProviderError(error, provider);
+  return {
+    success: false,
+    error: normalized.originalMessage,
+    errorCategory: normalized.category,
+    ...(normalized.status === undefined ? {} : { status: normalized.status }),
+  };
+};
+
+const logFailure = ({ provider, result, fallback = false, fallbackProvider = null }) => {
+  const details = [
+    `provider=${provider}`,
+    `category=${result.errorCategory || 'UNKNOWN'}`,
+    ...(result.status === undefined ? [] : [`status=${result.status}`]),
+    `fallback=${fallback}`,
+    ...(fallbackProvider ? [`fallbackProvider=${fallbackProvider}`] : []),
+  ].join(' ');
+  console.warn(`[ProviderManager] ${details}`);
+};
 
 /**
  * Provider Manager
@@ -31,42 +60,47 @@ class ProviderManager {
    */
   async generateResponse(question, contextChunks = [], options = {}) {
     const { provider = this.defaultProvider, enableFallback = true } = options;
-    
+    const selectedProvider = this.getProvider(provider);
+
+    if (!selectedProvider) {
+      return { success: false, error: "Provider não suportado", errorCategory: 'PROVIDER_UNAVAILABLE' };
+    }
+
+    let result;
     try {
-      const selectedProvider = this.getProvider(provider);
-      if (!selectedProvider) {
-        return { success: false, error: "Provider não suportado", errorCategory: 'PROVIDER_UNAVAILABLE' };
-      }
-      const result = await selectedProvider.generateResponse(question, contextChunks, options);
-      
-      // Automatic Fallback Logic (bidirecional, sem repassar chave do provider de origem)
-      if (!result.success && enableFallback) {
-        const fallbackCategories = ['TIMEOUT', 'RATE_LIMIT', 'QUOTA_EXCEEDED'];
-        
-        if (fallbackCategories.includes(result.errorCategory)) {
-          const fallbackName = provider === 'gemini' ? 'groq' : 'gemini';
-          const fallbackProvider = this.getProvider(fallbackName);
-          const fallbackHasSystemKey = fallbackName === 'gemini'
-            ? process.env.GEMINI_API_KEY
-            : process.env.GROQ_API_KEY;
-
-          if (fallbackProvider && fallbackHasSystemKey) {
-            console.log(`[ProviderManager] Fallback path: ${provider} -> ${fallbackName}`);
-            const { userApiKey: _drop, ...fallbackOptions } = options;
-            return fallbackProvider.generateResponse(question, contextChunks, {
-              ...fallbackOptions,
-              provider: fallbackName,
-            });
-          }
-
-          return { success: false, error: "Primary and fallback providers failed or not configured", errorCategory: 'PROVIDER_UNAVAILABLE' };
-        }
-      }
-      
-      return result;
+      result = await selectedProvider.generateResponse(question, contextChunks, options);
     } catch (error) {
-      console.error(`[ProviderManager] Fatal error in ${provider}:`, error.message);
-      return { success: false, error: sanitizeProviderMessage(error.message) };
+      result = normalizeFailure(error, provider);
+    }
+
+    if (result.success || !enableFallback || !FALLBACK_CATEGORIES.has(result.errorCategory)) {
+      if (!result.success) logFailure({ provider, result, fallback: false });
+      return result;
+    }
+
+    const fallbackName = provider === 'gemini' ? 'groq' : 'gemini';
+    const fallbackProvider = this.getProvider(fallbackName);
+    const fallbackHasSystemKey = fallbackName === 'gemini'
+      ? process.env.GEMINI_API_KEY
+      : process.env.GROQ_API_KEY;
+
+    logFailure({ provider, result, fallback: true, fallbackProvider: fallbackName });
+    if (!fallbackProvider || !fallbackHasSystemKey) return result;
+
+    const { userApiKey: _drop, ...fallbackOptions } = options;
+    try {
+      const fallbackResult = await fallbackProvider.generateResponse(question, contextChunks, {
+        ...fallbackOptions,
+        provider: fallbackName,
+      });
+      if (!fallbackResult.success) {
+        logFailure({ provider: fallbackName, result: fallbackResult, fallback: false });
+      }
+      return fallbackResult;
+    } catch (error) {
+      const fallbackResult = normalizeFailure(error, fallbackName);
+      logFailure({ provider: fallbackName, result: fallbackResult, fallback: false });
+      return fallbackResult;
     }
   }
 

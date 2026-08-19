@@ -126,15 +126,14 @@ export class GeminiProvider extends BaseProvider {
         }
 
         // If not a 503, log and return error
-        console.error("[Gemini DEBUG] RAW ERROR in " + this.constructor.name + ".generateResponse:", {
-          message: error.message,
-          status: error.status,
+        // Nunca registrar o objeto bruto: SDKs podem incluir credenciais na exceção.
+        const normalized = normalizeProviderError(error, 'gemini');
+        console.error("[Gemini] generation error:", {
+          message: normalized.originalMessage,
+          status: normalized.status,
           code: error.code,
           name: error.name,
-          stack: error.stack,
-          fullError: error
         });
-        const normalized = normalizeProviderError(error, 'gemini');
         return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
       }
     }
