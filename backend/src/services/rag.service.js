@@ -35,22 +35,25 @@ export async function processQuestion(question, editalId = null, options = {}) {
   try {
     console.log(`[RAG] Processing question: "${question.slice(0, 50)}..."`);
     
-    // Step 0: Query expansion - gerar variações da pergunta
+    const queryExpansionStartedAt = performance.now();
     const expandedQueries = generateSearchQueries(question);
+    console.log(`[RAG Timing] queryExpansion=${elapsedMs(queryExpansionStartedAt)}ms queries=${expandedQueries.queries.length} keywords=${expandedQueries.keywords.length}`);
 
     // Step 1 & 2: Retrieve relevant chunks from database (Hybrid Search + Hybrid AI)
     console.log("[RAG] Step 1 & 2: Retrieving relevant chunks...");
+    const retrievalStartedAt = performance.now();
     let chunks = await retrieveRelevantChunksHybrid(
       question,
       expandedQueries,
       editalId,
       { userApiKey }
     );
-
-    // Step 3: If no chunks found, try keyword-only fallback
     if (chunks.length === 0) {
       chunks = await retrieveByKeywords(expandedQueries.keywords, editalId);
     }
+    console.log(`[RAG Timing] retrievalTotal=${elapsedMs(retrievalStartedAt)}ms chunks=${chunks.length}`);
+
+    // Step 3: If no chunks found, try keyword-only fallback
 
     if (chunks.length === 0) {
       return {
@@ -129,6 +132,7 @@ export async function processQuestion(question, editalId = null, options = {}) {
  * @returns {Promise<Array<Object>>} Relevant chunks
  */
 async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId = null, options = {}) {
+  const retrievalStartedAt = performance.now();
   try {
     const { userApiKey = null } = options;
     console.log(`[RAG] Busca híbrida: editalId=${editalId || 'null'}`);
@@ -137,7 +141,9 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
 
     // Case 1: Specific Edital
     if (editalId) {
+      const editalLookupStartedAt = performance.now();
       const edital = await Edital.findById(editalId);
+      console.log(`[RAG Timing] editalLookup=${elapsedMs(editalLookupStartedAt)}ms found=${!!edital}`);
       if (!edital) throw new Error("Edital not found");
 
       const model = edital.embedding_model || 'local';
@@ -155,13 +161,15 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
         );
         console.log(`[RAG Timing] vectorRetrieval=${elapsedMs(vectorStartedAt)}ms chunks=${allChunks.length}`);
       }
-    } 
+    }
     // Case 2: Global Search (across multiple editais)
     else {
       // Find all unique embedding models in the database
+      const editalLookupStartedAt = performance.now();
       const models = await Edital.distinct("embedding_model");
+      console.log(`[RAG Timing] editalLookup=${elapsedMs(editalLookupStartedAt)}ms models=${models.length}`);
       const modelsToUse = models.length > 0 ? models : ['local'];
-      
+
       console.log(`[RAG] Busca global em modelos: ${modelsToUse.join(', ')}`);
 
       // Generate embeddings for each model and search
@@ -177,7 +185,7 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
           allChunks.push(...chunks);
         }
       }
-      
+
       // Deduplicate and re-sort if multiple models returned same chunks (unlikely but possible if logic changes)
       const seen = new Set();
       allChunks = allChunks.filter(c => {
@@ -187,10 +195,9 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
         return true;
       }).sort((a, b) => b.similarity - a.similarity).slice(0, RAG_CONFIG.topK);
     }
-
     console.log(`[RAG] Busca vetorial retornou ${allChunks.length} chunks`);
 
-    // Marcar método de busca
+    let contextPreparationStartedAt;
     allChunks.forEach(c => { c.method = 'vector'; });
 
     // Se poucos resultados, tentar com queries expandidas (busca textual no MongoDB)
@@ -200,6 +207,7 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
         expandedQueries.keywords,
         editalId,
       );
+      contextPreparationStartedAt = performance.now();
 
       // Mesclar resultados
       const seen = new Set(allChunks.map(c => `${c.edital_id || editalId}-${c.chunk_index}`));
@@ -213,11 +221,15 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
         }
       }
     }
+    if (contextPreparationStartedAt === undefined) contextPreparationStartedAt = performance.now();
+    console.log(`[RAG Timing] contextPreparation=${elapsedMs(contextPreparationStartedAt)}ms chunks=${allChunks.length}`);
 
     return allChunks;
   } catch (error) {
     console.error("[RAG] Erro na busca híbrida:", error.message);
     return [];
+  } finally {
+    console.log(`[RAG Timing] retrievalInternal=${elapsedMs(retrievalStartedAt)}ms`);
   }
 }
 

@@ -4,6 +4,7 @@
  */
 
 import mongoose from 'mongoose';
+import { performance } from 'node:perf_hooks';
 
 const editalSchema = new mongoose.Schema({
   titulo: {
@@ -140,6 +141,7 @@ editalSchema.methods.getRAGStats = function() {
 
 // Threshold único de similaridade (alinhado ao RAG_CONFIG do rag.service)
 const SIMILARITY_THRESHOLD = 0.2;
+const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
 
 // Escapa caracteres especiais de regex em busca textual
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -180,23 +182,31 @@ editalSchema.statics.buscar = async function({ ano, search, limit = 20, offset =
 
 // Método para buscar chunks com similaridade (implementação manual)
 editalSchema.statics.buscarChunksPorSimilaridade = async function(editalId, queryEmbedding, topK = 5) {
+  const mongoReadStartedAt = performance.now();
   const edital = await this.findById(editalId);
+  console.log(`[RAG Timing] vectorMongoRead=${elapsedMs(mongoReadStartedAt)}ms`);
   if (!edital) return [];
   
+  const chunkProcessingStartedAt = performance.now();
   // Filtrar chunks com embeddings
   const chunksComEmbedding = edital.chunks.filter(c => c.embedding && c.embedding.length > 0);
+  console.log(`[RAG Timing] vectorChunkProcessing=${elapsedMs(chunkProcessingStartedAt)}ms chunks=${chunksComEmbedding.length}`);
   
+  const similarityStartedAt = performance.now();
   // Calcular similaridade de cosseno para cada chunk
   const chunksComSimilaridade = chunksComEmbedding.map(chunk => ({
     ...chunk.toObject(),
     similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
   }));
+  console.log(`[RAG Timing] vectorSimilarity=${elapsedMs(similarityStartedAt)}ms chunks=${chunksComSimilaridade.length}`);
   
+  const sortStartedAt = performance.now();
   // Filtrar por threshold e ordenar
   const resultados = chunksComSimilaridade
     .filter(c => c.similarity >= SIMILARITY_THRESHOLD)
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, topK);
+  console.log(`[RAG Timing] vectorSort=${elapsedMs(sortStartedAt)}ms chunks=${resultados.length}`);
   
   return resultados;
 };
