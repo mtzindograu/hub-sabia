@@ -181,10 +181,13 @@ editalSchema.statics.buscar = async function({ ano, search, limit = 20, offset =
 };
 
 // Método para buscar chunks com similaridade (implementação manual)
-editalSchema.statics.buscarChunksPorSimilaridade = async function(editalId, queryEmbedding, topK = 5) {
-  const mongoReadStartedAt = performance.now();
-  const edital = await this.findById(editalId);
-  console.log(`[RAG Timing] vectorMongoRead=${elapsedMs(mongoReadStartedAt)}ms`);
+editalSchema.statics.buscarChunksPorSimilaridade = async function(editalId, queryEmbedding, topK = 5, editalData = null) {
+  let edital = editalData;
+  if (!edital) {
+    const mongoReadStartedAt = performance.now();
+    edital = await this.findById(editalId);
+    console.log(`[RAG Timing] vectorMongoRead=${elapsedMs(mongoReadStartedAt)}ms`);
+  }
   if (!edital) return [];
   
   const chunkProcessingStartedAt = performance.now();
@@ -194,10 +197,13 @@ editalSchema.statics.buscarChunksPorSimilaridade = async function(editalId, quer
   
   const similarityStartedAt = performance.now();
   // Calcular similaridade de cosseno para cada chunk
-  const chunksComSimilaridade = chunksComEmbedding.map(chunk => ({
-    ...chunk.toObject(),
-    similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
-  }));
+  const chunksComSimilaridade = chunksComEmbedding.map(chunk => {
+    const chunkData = typeof chunk.toObject === 'function' ? chunk.toObject() : chunk;
+    return {
+      ...chunkData,
+      similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
+    };
+  });
   console.log(`[RAG Timing] vectorSimilarity=${elapsedMs(similarityStartedAt)}ms chunks=${chunksComSimilaridade.length}`);
   
   const sortStartedAt = performance.now();

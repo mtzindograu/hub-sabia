@@ -142,7 +142,9 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
     // Case 1: Specific Edital
     if (editalId) {
       const editalLookupStartedAt = performance.now();
-      const edital = await Edital.findById(editalId);
+      const edital = await Edital.findById(editalId)
+        .select({ embedding_model: 1, chunks: 1 })
+        .lean();
       console.log(`[RAG Timing] editalLookup=${elapsedMs(editalLookupStartedAt)}ms found=${!!edital}`);
       if (!edital) throw new Error("Edital not found");
 
@@ -158,6 +160,7 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
           editalId,
           embeddingResult.embedding,
           RAG_CONFIG.topK,
+          edital,
         );
         console.log(`[RAG Timing] vectorRetrieval=${elapsedMs(vectorStartedAt)}ms chunks=${allChunks.length}`);
       }
