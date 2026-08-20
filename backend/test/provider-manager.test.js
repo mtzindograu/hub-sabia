@@ -134,3 +134,35 @@ test("erro explícito de autenticação não é fallback", () => {
   const normalized = normalizeProviderError(new Error("authentication error"), "gemini");
   assert.equal(normalized.category, "AUTH_ERROR");
 });
+
+test("fallback preserva resultado e registra duração isolada", async () => {
+  const originalLog = console.log;
+  const logs = [];
+  console.log = (...args) => logs.push(args.join(" "));
+  providerManager.providers.gemini = {
+    async generateResponse() {
+      return { success: false, error: "timeout", errorCategory: "TIMEOUT" };
+    },
+  };
+  providerManager.providers.groq = {
+    async generateResponse() {
+      return { success: true, response: "resposta Groq", metadata: { provider: "groq" } };
+    },
+  };
+
+  try {
+    const result = await providerManager.generateResponse("Qual o prazo?", contextChunks);
+    assert.deepEqual(result, {
+      success: true,
+      response: "resposta Groq",
+      metadata: { provider: "groq" },
+    });
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.match(
+    logs.join("\n"),
+    /\[Fallback Timing\] from=gemini to=groq duration=\d+(?:\.\d+)?ms success=true/,
+  );
+});

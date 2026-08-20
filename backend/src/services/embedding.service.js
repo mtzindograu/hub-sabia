@@ -9,6 +9,7 @@ import { pipeline, env } from '@xenova/transformers';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import geminiService, { GEMINI_MODELS } from './gemini.service.js';
+import { performance } from 'node:perf_hooks';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,7 @@ const LOCAL_EMBEDDING_MODEL = 'Xenova/all-MiniLM-L6-v2';
 const LOCAL_EMBEDDING_DIMENSION = 384;
 // Lido no call-site: GEMINI_MODELS.EMBEDDING pode ser mutado pelo autoDiscoverModels
 const GEMINI_EMBEDDING_MODEL = () => GEMINI_MODELS.EMBEDDING;
+const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
 
 // Singleton pipeline instance
 let embeddingPipeline = null;
@@ -49,24 +51,32 @@ async function getPipeline() {
  */
 export async function generateEmbedding(text, options = {}) {
   try {
-    const { 
-      userApiKey = null, 
+    const {
+      userApiKey = null,
       model = null, // Explicit model request
-      useGemini = !!(process.env.GEMINI_API_KEY || userApiKey) 
+      useGemini = !!(process.env.GEMINI_API_KEY || userApiKey)
     } = options;
 
     const targetModel = model || (useGemini ? GEMINI_EMBEDDING_MODEL() : LOCAL_EMBEDDING_MODEL);
 
     if (targetModel === GEMINI_EMBEDDING_MODEL()) {
+      const geminiStartedAt = performance.now();
       console.log(`[EMBEDDING] Using Google Gemini (${GEMINI_EMBEDDING_MODEL()})`);
-      const result = await geminiService.generateEmbedding(text, { userApiKey });
+      let result;
+      try {
+        result = await geminiService.generateEmbedding(text, { userApiKey });
+      } finally {
+        console.log(`[Embedding Timing] provider=gemini model=${GEMINI_EMBEDDING_MODEL()} duration=${elapsedMs(geminiStartedAt)}ms success=${result?.success === true}`);
+      }
       if (result.success) return result;
       console.warn(`[EMBEDDING] Gemini failed, falling back to local model: ${result.error}`);
     }
 
+    const localStartedAt = performance.now();
     console.log(`[EMBEDDING] Using local model (${LOCAL_EMBEDDING_MODEL})`);
-    
+
     if (!text || text.trim().length === 0) {
+      console.log(`[Embedding Timing] provider=local model=${LOCAL_EMBEDDING_MODEL} duration=${elapsedMs(localStartedAt)}ms success=false`);
       return {
         success: false,
         error: 'Empty text provided for embedding',
@@ -74,22 +84,28 @@ export async function generateEmbedding(text, options = {}) {
       };
     }
 
-    const pipeline = await getPipeline();
-    const truncatedText = truncateText(text, 2000);
+    try {
+      const pipeline = await getPipeline();
+      const truncatedText = truncateText(text, 2000);
 
-    const output = await pipeline(truncatedText, {
-      pooling: 'mean',
-      normalize: true,
-    });
+      const output = await pipeline(truncatedText, {
+        pooling: 'mean',
+        normalize: true,
+      });
 
-    const embedding = Array.from(output.data);
-    
-    return {
-      success: true,
-      embedding,
-      model: LOCAL_EMBEDDING_MODEL,
-      dimension: embedding.length,
-    };
+      const embedding = Array.from(output.data);
+      const result = {
+        success: true,
+        embedding,
+        model: LOCAL_EMBEDDING_MODEL,
+        dimension: embedding.length,
+      };
+      console.log(`[Embedding Timing] provider=local model=${LOCAL_EMBEDDING_MODEL} duration=${elapsedMs(localStartedAt)}ms success=true`);
+      return result;
+    } catch (error) {
+      console.log(`[Embedding Timing] provider=local model=${LOCAL_EMBEDDING_MODEL} duration=${elapsedMs(localStartedAt)}ms success=false`);
+      throw error;
+    }
   } catch (error) {
     console.error('[EMBEDDING] ERRO:', error.message);
     return {

@@ -10,6 +10,7 @@ import Edital from "../models/Edital.js";
 import { generateQueryEmbedding } from "./embedding.service.js";
 import providerManager from "./provider-manager.js";
 import { generateSearchQueries, calculateTextRelevance } from "./query-expansion.service.js";
+import { performance } from "node:perf_hooks";
 
 // RAG Configuration - Improved for better recall
 const RAG_CONFIG = {
@@ -17,6 +18,7 @@ const RAG_CONFIG = {
   similarityThreshold: 0.2, // Reduzido de 0.3 para 0.2 para mais recall
   maxContextLength: 12000, // Aumentado de 8000 para mais contexto
 };
+const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
 
 /**
  * Process a question using RAG pipeline with hybrid search and hybrid AI provider
@@ -27,6 +29,7 @@ const RAG_CONFIG = {
  */
 export async function processQuestion(question, editalId = null, options = {}) {
   const startTime = Date.now();
+  const timingStartTime = performance.now();
   const { userApiKey = null } = options;
 
   try {
@@ -63,14 +66,18 @@ export async function processQuestion(question, editalId = null, options = {}) {
     }
 
     // Step 4: Filter and rank chunks
+    const rankingStartedAt = performance.now();
     const filteredChunks = filterAndRankChunksHybrid(chunks, expandedQueries.keywords, question);
+    console.log(`[RAG Timing] ranking=${elapsedMs(rankingStartedAt)}ms chunks=${filteredChunks.length}`);
 
     // Step 5: Generate response using Selected AI Provider
     console.log("[RAG] Step 5: Generating AI response...");
     
     console.log(`[RAG DEBUG] Received Options: provider=${options.provider}, userApiKey=${!!options.userApiKey}`);
     console.log(`[RAG] Using Provider: ${options.provider || 'default'}...`);
+    const generationStartedAt = performance.now();
     const responseResult = await providerManager.generateResponse(question, filteredChunks, { ...options, userApiKey });
+    console.log(`[RAG Timing] generation=${elapsedMs(generationStartedAt)}ms success=${responseResult.success}`);
 
     if (!responseResult.success) {
       // Nunca propagar mensagem crua do provider (pode conter API key)
@@ -108,6 +115,9 @@ export async function processQuestion(question, editalId = null, options = {}) {
       },
     };
   }
+  finally {
+    console.log(`[RAG Timing] total=${elapsedMs(timingStartTime)}ms`);
+  }
 }
 
 /**
@@ -133,13 +143,17 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
       const model = edital.embedding_model || 'local';
       console.log(`[RAG] Edital usa modelo: ${model}`);
 
+      const embeddingStartedAt = performance.now();
       const embeddingResult = await generateQueryEmbedding(question, { userApiKey, model });
+      console.log(`[RAG Timing] embedding=${elapsedMs(embeddingStartedAt)}ms model=${model} success=${embeddingResult.success}`);
       if (embeddingResult.success) {
+        const vectorStartedAt = performance.now();
         allChunks = await Edital.buscarChunksPorSimilaridade(
           editalId,
           embeddingResult.embedding,
           RAG_CONFIG.topK,
         );
+        console.log(`[RAG Timing] vectorRetrieval=${elapsedMs(vectorStartedAt)}ms chunks=${allChunks.length}`);
       }
     } 
     // Case 2: Global Search (across multiple editais)
@@ -152,9 +166,13 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
 
       // Generate embeddings for each model and search
       for (const model of modelsToUse) {
+        const embeddingStartedAt = performance.now();
         const embeddingResult = await generateQueryEmbedding(question, { userApiKey, model });
+        console.log(`[RAG Timing] embedding=${elapsedMs(embeddingStartedAt)}ms model=${model} success=${embeddingResult.success}`);
         if (embeddingResult.success) {
+          const vectorStartedAt = performance.now();
           const chunks = await Edital.buscarGlobal(embeddingResult.embedding, RAG_CONFIG.topK);
+          console.log(`[RAG Timing] vectorRetrieval=${elapsedMs(vectorStartedAt)}ms chunks=${chunks.length}`);
           // Only add chunks that match this model's expected dimension (double check)
           allChunks.push(...chunks);
         }
@@ -210,6 +228,8 @@ async function retrieveRelevantChunksHybrid(question, expandedQueries, editalId 
  * @returns {Promise<Array<Object>>} Relevant chunks
  */
 async function retrieveByKeywords(keywords, editalId = null) {
+  const keywordStartedAt = performance.now();
+  let searched = false;
   try {
     if (!keywords || keywords.length === 0) return [];
 
@@ -220,6 +240,7 @@ async function retrieveByKeywords(keywords, editalId = null) {
     // Buscar por cada keyword individualmente
     for (const keyword of keywords) {
       if (keyword.length < 3) continue; // Skip muito curtas
+      searched = true;
 
       const chunks = await Edital.buscarChunksPorTexto(keyword, editalId, RAG_CONFIG.topK);
 
@@ -240,10 +261,13 @@ async function retrieveByKeywords(keywords, editalId = null) {
     }
 
     // Ordenar por relevância textual e retornar top K
-    return allResults
+    const result = allResults
       .sort((a, b) => b.textRelevance - a.textRelevance)
       .slice(0, RAG_CONFIG.topK);
+    if (searched) console.log(`[RAG Timing] keywordRetrieval=${elapsedMs(keywordStartedAt)}ms chunks=${result.length}`);
+    return result;
   } catch (error) {
+    if (searched) console.log(`[RAG Timing] keywordRetrieval=${elapsedMs(keywordStartedAt)}ms success=false`);
     console.error("[RAG] Erro no fallback por keywords:", error.message);
     return [];
   }

@@ -1,6 +1,9 @@
 import { geminiProvider, GEMINI_MODELS } from "./providers/gemini.provider.js";
 import { groqProvider } from "./providers/groq.provider.js";
 import { normalizeProviderError, sanitizeProviderMessage } from "../utils/provider-utils.js";
+import { performance } from "node:perf_hooks";
+const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
+
 
 const FALLBACK_CATEGORIES = new Set([
   'TIMEOUT',
@@ -86,19 +89,25 @@ class ProviderManager {
 
     logFailure({ provider, result, fallback: true, fallbackProvider: fallbackName });
     if (!fallbackProvider || !fallbackHasSystemKey) return result;
-
     const { userApiKey: _drop, ...fallbackOptions } = options;
+
+    const fallbackStartedAt = performance.now();
     try {
       const fallbackResult = await fallbackProvider.generateResponse(question, contextChunks, {
         ...fallbackOptions,
         provider: fallbackName,
       });
+      const fallbackDetails = fallbackResult.success
+        ? ''
+        : ` category=${fallbackResult.errorCategory || 'UNKNOWN'}${fallbackResult.status === undefined ? '' : ` status=${fallbackResult.status}`}`;
+      console.log(`[Fallback Timing] from=${provider} to=${fallbackName} duration=${elapsedMs(fallbackStartedAt)}ms success=${fallbackResult.success}${fallbackDetails}`);
       if (!fallbackResult.success) {
         logFailure({ provider: fallbackName, result: fallbackResult, fallback: false });
       }
       return fallbackResult;
     } catch (error) {
       const fallbackResult = normalizeFailure(error, fallbackName);
+      console.log(`[Fallback Timing] from=${provider} to=${fallbackName} duration=${elapsedMs(fallbackStartedAt)}ms success=false category=${fallbackResult.errorCategory || 'UNKNOWN'}${fallbackResult.status === undefined ? '' : ` status=${fallbackResult.status}`}`);
       logFailure({ provider: fallbackName, result: fallbackResult, fallback: false });
       return fallbackResult;
     }

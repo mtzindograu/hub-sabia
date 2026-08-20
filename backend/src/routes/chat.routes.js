@@ -4,6 +4,7 @@
  */
 
 import express from "express";
+import { performance } from "node:perf_hooks";
 import mongoose from "mongoose";
 import rateLimit from "express-rate-limit";
 import { processQuestion, retrieveContext } from "../services/rag.service.js";
@@ -18,6 +19,7 @@ import UsageLog from "../models/UsageLog.js";
 import providerManager from "../services/provider-manager.js";
 
 const router = express.Router();
+const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
 
 const isValidObjectId = (v) => mongoose.Types.ObjectId.isValid(v);
 
@@ -37,6 +39,7 @@ const chatLimiter = rateLimit({
  */
 router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
   const startTime = Date.now();
+  const timingStartTime = performance.now();
   let trimmedQuestion = "";
   let campus_id = req.body.campus_id || null;
   let conversation_id = req.body.conversationId || null;
@@ -72,7 +75,9 @@ router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
     }
 
     // --- CREDIT CHECK (usuário sempre logado — authMiddleware) ---
+    const creditCheckStartedAt = performance.now();
     const creditStatus = await creditsService.checkAndConsumeCredit(req.user);
+    console.log(`[API Timing] creditCheck=${elapsedMs(creditCheckStartedAt)}ms`);
     if (!creditStatus.canProceed) {
       return res.status(403).json({
         success: false,
@@ -90,7 +95,9 @@ router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
     let preferredProvider = 'gemini';
 
     // Fetch user with API Keys and preference
+    const userLookupStartedAt = performance.now();
     const user = await User.findById(req.user._id).select('+gemini_api_key +groq_api_key');
+    console.log(`[API Timing] userLookup=${elapsedMs(userLookupStartedAt)}ms`);
     // Modo chave própria ativa: usa o provider da chave; senão a preferência do usuário
     preferredProvider = user?.usingOwnApiKey?.active && user?.usingOwnApiKey?.provider
       ? user.usingOwnApiKey.provider
@@ -102,6 +109,7 @@ router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
       userApiKey = user?.gemini_api_key || null;
     }
 
+    const conversationStartedAt = performance.now();
     conversation = await chatService.getOrCreateConversation(
       req.user._id,
       editalId,
@@ -109,17 +117,22 @@ router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
       trimmedQuestion
     );
     conversation_id = conversation?._id;
+    console.log(`[API Timing] conversation=${elapsedMs(conversationStartedAt)}ms`);
 
     // Process question through RAG pipeline (with user API key and provider preference)
+    const ragStartedAt = performance.now();
     const result = await processQuestion(trimmedQuestion, editalId, {
       userApiKey,
       provider: preferredProvider
     });
+    console.log(`[API Timing] rag=${elapsedMs(ragStartedAt)}ms`);
 
     // --- CREDIT CONSUMPTION (só se houve chamada de IA) ---
     let updatedUser = null;
     if (result.success && result.metadata?.usedAI !== false) {
+      const creditDecrementStartedAt = performance.now();
       updatedUser = await creditsService.decrementCredit(req.user._id);
+      console.log(`[API Timing] creditDecrement=${elapsedMs(creditDecrementStartedAt)}ms`);
     }
     // --------------------------
 
@@ -139,7 +152,9 @@ router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
       metadata: result.metadata
     };
 
+    const persistenceStartedAt = performance.now();
     const log = await chatService.logChatInteraction(logData);
+    console.log(`[API Timing] persistence=${elapsedMs(persistenceStartedAt)}ms`);
 
     // Save detailed usage log if available
     if (result.metadata?.usage) {
@@ -196,6 +211,8 @@ router.post("/pergunta", chatLimiter, authMiddleware, async (req, res) => {
       error: "Ops! Não consegui processar sua pergunta agora. Tenta de novo em instantes!",
       code: 'INTERNAL_ERROR',
     });
+  } finally {
+    console.log(`[API Timing] total=${elapsedMs(timingStartTime)}ms`);
   }
 });
 

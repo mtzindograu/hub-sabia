@@ -5,6 +5,7 @@
  */
 
 import Groq from "groq-sdk";
+import { performance } from "node:perf_hooks";
 import dotenv from "dotenv";
 import BaseProvider from "./base.provider.js";
 import { normalizeProviderError } from "../../utils/provider-utils.js";
@@ -31,6 +32,7 @@ const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS) => {
   });
   return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
 };
+const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
 
 export class GroqProvider extends BaseProvider {
   /**
@@ -47,6 +49,7 @@ export class GroqProvider extends BaseProvider {
    */
   async generateResponse(question, contextChunks = [], options = {}) {
     const { userApiKey = null, model = DEFAULT_MODEL } = options;
+    const startedAt = performance.now();
     try {
       const client = this.#getClient(userApiKey);
 
@@ -66,11 +69,12 @@ export class GroqProvider extends BaseProvider {
 
       const content = result.choices?.[0]?.message?.content || "";
       if (!content) {
+        console.log(`[AI Timing] provider=groq model=${model} duration=${elapsedMs(startedAt)}ms success=false category=INVALID_REQUEST`);
         return { success: false, error: "O modelo retornou resposta vazia", errorCategory: 'INVALID_REQUEST' };
       }
 
       const usage = result.usage || {};
-      return {
+      const responseResult = {
         success: true,
         response: content,
         metadata: {
@@ -85,8 +89,11 @@ export class GroqProvider extends BaseProvider {
           },
         },
       };
+      console.log(`[AI Timing] provider=groq model=${model} duration=${elapsedMs(startedAt)}ms success=true`);
+      return responseResult;
     } catch (error) {
       const normalized = normalizeProviderError(error, 'groq');
+      console.log(`[AI Timing] provider=groq model=${model} duration=${elapsedMs(startedAt)}ms success=false category=${normalized.category}${normalized.status === undefined ? '' : ` status=${normalized.status}`}`);
       console.error("[Groq] generation error:", normalized.originalMessage);
       return { success: false, error: normalized.originalMessage, errorCategory: normalized.category };
     }

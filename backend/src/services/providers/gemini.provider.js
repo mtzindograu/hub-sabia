@@ -4,6 +4,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
+import { performance } from "node:perf_hooks";
 import dotenv from "dotenv";
 import BaseProvider from "./base.provider.js";
 import { normalizeProviderError, estimateCost, parseJsonText } from "../../utils/provider-utils.js";
@@ -12,6 +13,7 @@ dotenv.config();
 
 // --- CONFIGURATION & STATE (SINGLE SOURCE OF TRUTH) ---
 const REQUEST_TIMEOUT_MS = 15000; // 15 seconds max per request
+const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
 
 // Modelos vigentes na API v1beta (gemini-1.5-flash foi descontinuado — 404).
 // O autoDiscoverModels tenta atualizar para "flash-latest"; estes são o fallback seguro.
@@ -87,7 +89,8 @@ export class GeminiProvider extends BaseProvider {
     const initialModel = options.model || DEFAULT_MODEL;
     const modelsToTry = [initialModel, ...fallbackModels.filter(m => m !== initialModel)];
 
-    for (const model of modelsToTry) {
+    for (const [attemptIndex, model] of modelsToTry.entries()) {
+      const attemptStartedAt = performance.now();
       try {
         const client = this.#getClient(userApiKey);
         
@@ -107,18 +110,23 @@ export class GeminiProvider extends BaseProvider {
         const completionTokens = usage.candidatesTokenCount || 0;
         const totalTokens = usage.totalTokenCount || (promptTokens + completionTokens);
         const estimatedCost = estimateCost('gemini', model, promptTokens, completionTokens);
-
-        return {
+        const responseResult = {
           success: true,
           response: getTextFromResponse(result),
-          metadata: { 
-            model, 
+          metadata: {
+            model,
             provider: 'gemini',
             contextUsed: contextChunks.length,
             usage: { promptTokens, completionTokens, totalTokens, estimatedCost }
           }
         };
+        console.log(`[AI Timing] provider=gemini model=${model} attempt=${attemptIndex + 1} duration=${elapsedMs(attemptStartedAt)}ms success=true`);
+        return responseResult;
       } catch (error) {
+        const normalized = normalizeProviderError(error, 'gemini');
+        const status = normalized.status ?? error.status;
+        console.log(`[AI Timing] provider=gemini model=${model} attempt=${attemptIndex + 1} duration=${elapsedMs(attemptStartedAt)}ms success=false category=${normalized.category}${status === undefined ? '' : ` status=${status}`}`);
+
         // If 503 (UNAVAILABLE), try next model
         if (error.status === 503 || (error.message && error.message.includes("503"))) {
           console.warn(`[Gemini] Model ${model} failed with 503. Trying next model...`);
@@ -127,7 +135,6 @@ export class GeminiProvider extends BaseProvider {
 
         // If not a 503, log and return error
         // Nunca registrar o objeto bruto: SDKs podem incluir credenciais na exceção.
-        const normalized = normalizeProviderError(error, 'gemini');
         console.error("[Gemini] generation error:", {
           message: normalized.originalMessage,
           status: normalized.status,
@@ -139,10 +146,10 @@ export class GeminiProvider extends BaseProvider {
     }
 
     // All models failed with 503 (unavailable/overloaded)
-    return { 
-      success: false, 
-      error: "O serviço do Gemini está temporariamente sobrecarregado. Tente novamente em alguns instantes.", 
-      errorCategory: 'RATE_LIMIT' 
+    return {
+      success: false,
+      error: "O serviço do Gemini está temporariamente sobrecarregado. Tente novamente em alguns instantes.",
+      errorCategory: 'RATE_LIMIT'
     };
   }
 
