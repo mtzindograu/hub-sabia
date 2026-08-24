@@ -139,17 +139,25 @@ export class GroqProvider extends BaseProvider {
    */
   async validateApiKey(apiKey) {
     try {
-      if (!apiKey) return false;
+      if (!apiKey) return { valid: false, errorCategory: 'AUTH_ERROR', status: 401 };
       const client = new Groq({ apiKey });
       const response = await withTimeout(client.chat.completions.create({
         model: GROQ_MODELS.FAST,
         messages: [{ role: 'user', content: 'OK' }],
         max_tokens: 5,
       }), 10000);
-      return (response.choices?.[0]?.message?.content || "").length > 0;
+      return {
+        valid: (response.choices?.[0]?.message?.content || "").length > 0,
+        ...(response.choices?.[0]?.message?.content ? {} : { errorCategory: 'INVALID_REQUEST' }),
+      };
     } catch (error) {
-      console.error("[Groq] Key validation failed:", error.message);
-      return false;
+      const normalized = normalizeProviderError(error, 'groq');
+      console.error("[Groq] Key validation failed:", normalized.originalMessage);
+      return {
+        valid: false,
+        errorCategory: normalized.category,
+        ...(normalized.status === undefined ? {} : { status: normalized.status }),
+      };
     }
   }
 

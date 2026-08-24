@@ -155,11 +155,18 @@ class ProviderManager {
    */
   async validateApiKey(apiKey, providerName = 'gemini') {
     const provider = this.getProvider(providerName);
-    if (!provider) return false;
+    if (!provider) return { valid: false, errorCategory: 'PROVIDER_UNAVAILABLE' };
     try {
-      return await provider.validateApiKey(apiKey);
+      const result = await provider.validateApiKey(apiKey);
+      if (typeof result === 'boolean') return { valid: result };
+      return { valid: result?.valid === true, ...result };
     } catch (error) {
-      return false;
+      const normalized = normalizeProviderError(error, providerName);
+      return {
+        valid: false,
+        errorCategory: normalized.category,
+        ...(normalized.status === undefined ? {} : { status: normalized.status }),
+      };
     }
   }
 

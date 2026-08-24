@@ -17,6 +17,20 @@ import { authMiddleware, isAdmin } from '../middleware/auth.middleware.js';
 import providerManager from '../services/provider-manager.js';
 
 const router = Router();
+const VALIDATION_STATUS_BY_CATEGORY = {
+  RATE_LIMIT: 429,
+  TIMEOUT: 504,
+  PROVIDER_UNAVAILABLE: 503,
+  MODEL_UNAVAILABLE: 502,
+};
+
+const VALIDATION_MESSAGE_BY_CATEGORY = {
+  RATE_LIMIT: 'O provider atingiu o limite de requisições. Tente novamente mais tarde.',
+  TIMEOUT: 'A validação do provider expirou. Tente novamente.',
+  PROVIDER_UNAVAILABLE: 'O provider está indisponível no momento. Tente novamente mais tarde.',
+  MODEL_UNAVAILABLE: 'O modelo usado na validação do provider está indisponível.',
+};
+
 export function isDuplicateEmailError(error) {
   return error?.code === 11000 || error?.message === 'Email já cadastrado';
 }
@@ -183,10 +197,25 @@ router.post('/provider-config', authMiddleware, async (req, res) => {
     }
 
     const trimmedKey = typeof apiKey === 'string' ? apiKey.trim() : apiKey;
-    const isValid = await providerManager.validateApiKey(trimmedKey, provider);
+    const validation = await providerManager.validateApiKey(trimmedKey, provider);
 
-    if (!isValid) {
-      return res.status(400).json({ success: false, error: `A chave do ${provider} fornecida é inválida` });
+    if (!validation.valid) {
+      if (validation.errorCategory === 'AUTH_ERROR') {
+        return res.status(401).json({
+          success: false,
+          error: `A chave do ${provider} fornecida é inválida`,
+          code: 'INVALID_API_KEY',
+          errorCategory: validation.errorCategory,
+        });
+      }
+
+      const status = VALIDATION_STATUS_BY_CATEGORY[validation.errorCategory] || 502;
+      return res.status(status).json({
+        success: false,
+        error: VALIDATION_MESSAGE_BY_CATEGORY[validation.errorCategory] || 'Não foi possível validar o provider.',
+        code: 'PROVIDER_VALIDATION_FAILED',
+        errorCategory: validation.errorCategory || 'UNKNOWN',
+      });
     }
 
     await updateProviderConfig(req.user.id, provider, trimmedKey);

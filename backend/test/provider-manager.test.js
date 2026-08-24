@@ -20,6 +20,44 @@ afterEach(() => {
   if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
   else process.env.GEMINI_API_KEY = originalGeminiKey;
 });
+
+test("validação válida retorna resultado aceito", async () => {
+  providerManager.providers.groq = {
+    async validateApiKey(apiKey) {
+      assert.equal(apiKey, "test-key-not-real");
+      return true;
+    },
+  };
+
+  assert.deepEqual(await providerManager.validateApiKey("test-key-not-real", "groq"), {
+    valid: true,
+  });
+});
+
+for (const [{ status, code, message }, expectedCategory] of [
+  [{ status: 401, code: "invalid_api_key", message: "Invalid API key" }, "AUTH_ERROR"],
+  [{ status: 404, code: "model_not_found", message: "model not found" }, "MODEL_UNAVAILABLE"],
+  [{ status: 429, message: "rate limit exceeded" }, "RATE_LIMIT"],
+  [{ status: 503, message: "Service Unavailable" }, "PROVIDER_UNAVAILABLE"],
+  [{ message: "Groq Request timeout after 10000ms" }, "TIMEOUT"],
+]) {
+  test(`validação Groq preserva categoria ${expectedCategory}`, async () => {
+    providerManager.providers.groq = {
+      async validateApiKey() {
+        const error = new Error(message);
+        if (status !== undefined) error.status = status;
+        if (code !== undefined) error.code = code;
+        throw error;
+      },
+    };
+
+    const result = await providerManager.validateApiKey("test-key-not-real", "groq");
+
+    assert.equal(result.valid, false);
+    assert.equal(result.errorCategory, expectedCategory);
+    if (status !== undefined) assert.equal(result.status, status);
+  });
+}
 test("Gemini para Groq remove modelo primário e preserva opções compatíveis", async () => {
   let fallbackCalls = 0;
   let fallbackOptions;

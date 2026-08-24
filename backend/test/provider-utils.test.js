@@ -14,6 +14,13 @@ test("redige chaves Gemini (AIza)", () => {
   assert.ok(msg.includes("AIza***"));
 });
 
+test("redige chaves Groq em mensagens completas", () => {
+  const key = "gsk_EXEMPLO_LONGO_FICTICIO";
+  const msg = sanitizeProviderMessage(`Request failed using key ${key}`);
+  assert.ok(!msg.includes(key));
+  assert.ok(msg.includes("gsk_***"));
+});
+
 test("normalizeProviderError classifica rate limit", () => {
   const n = normalizeProviderError(new Error("429 Rate limit exceeded"), "gemini");
   assert.equal(n.category, "RATE_LIMIT");

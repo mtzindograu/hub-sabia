@@ -34,6 +34,7 @@ export function sanitizeProviderMessage(message) {
   if (typeof message !== "string") return String(message || "Erro desconhecido");
   return message
     .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "sk-***")
+    .replace(/\bgsk_[A-Za-z0-9_-]{12,}\b/g, "gsk_***")
     .replace(/\bAIza[0-9A-Za-z_-]{20,}\b/g, "AIza***")
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{10,}\b/gi, "Bearer ***");
 }

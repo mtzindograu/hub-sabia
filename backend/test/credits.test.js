@@ -56,18 +56,18 @@ test("normaliza usuário legado sem campos de crédito", () => {
   });
   assert.equal(normalized.planAcknowledged, false);
 });
-test("chave própria mantém saldo sem consumo", async () => {
+test("chave própria permite uso com 0 créditos sem consumo", async () => {
   const status = await creditsService.checkAndConsumeCredit({
     _id: "own-key-user",
-    remainingCredits: 15,
+    remainingCredits: 0,
     lastCreditReset: new Date(),
     currentPlan: { id: "free" },
-    usingOwnApiKey: { active: true, provider: "gemini" },
+    usingOwnApiKey: { active: true, provider: "groq" },
   });
 
   assert.equal(status.canProceed, true);
   assert.equal(status.usingOwnKey, true);
-  assert.equal(status.creditsRemaining, 15);
+  assert.equal(status.creditsRemaining, 0);
 });
 
 test("stream só consome após conclusão sem erro", () => {
