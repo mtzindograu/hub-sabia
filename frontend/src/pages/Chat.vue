@@ -87,7 +87,6 @@
           <select
             v-model="selectedEditalId"
             class="form-select"
-            @change="onEditalChange"
           >
             <option :value="null">Todos os editais</option>
             <option
@@ -411,7 +410,6 @@ onMounted(async () => {
   // Check for edital ID in route
   if (route.params.id) {
     selectedEditalId.value = route.params.id;
-    await loadSuggestedQuestions(route.params.id);
   }
 
   // Scroll event listener
@@ -557,25 +555,24 @@ async function loadEditais() {
 
 async function loadSuggestedQuestions(editalId) {
   try {
-    const response = await getSuggestedQuestions(editalId);
-    suggestedQuestions.value = response.data?.questions || [];
+    const response = await getSuggestedQuestions(editalId)
+    const questions = response?.data?.questions ?? response?.questions
+    suggestedQuestions.value = Array.isArray(questions) ? questions : []
   } catch (error) {
-    console.error("Error loading suggestions:", error);
-    suggestedQuestions.value = [];
+    console.error("Error loading suggestions:", error)
+    suggestedQuestions.value = []
   }
 }
-
-function onEditalChange() {
-  if (selectedEditalId.value) {
-    loadSuggestedQuestions(selectedEditalId.value);
+watch(selectedEditalId, (editalId) => {
+  if (editalId) {
+    loadSuggestedQuestions(editalId);
   } else {
     suggestedQuestions.value = [];
   }
-}
+});
 
 function selectEdital(id) {
   selectedEditalId.value = id;
-  loadSuggestedQuestions(id);
 }
 
 async function sendMessage() {
