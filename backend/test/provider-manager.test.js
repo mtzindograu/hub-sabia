@@ -5,6 +5,7 @@ import { normalizeProviderError, sanitizeProviderMessage } from "../src/utils/pr
 
 const originalProviders = { ...providerManager.providers };
 const originalGroqKey = process.env.GROQ_API_KEY;
+const originalGeminiKey = process.env.GEMINI_API_KEY;
 const contextChunks = [{ conteudo: "Informação do edital" }];
 
 beforeEach(() => {
@@ -16,7 +17,76 @@ afterEach(() => {
   providerManager.providers.groq = originalProviders.groq;
   if (originalGroqKey === undefined) delete process.env.GROQ_API_KEY;
   else process.env.GROQ_API_KEY = originalGroqKey;
+  if (originalGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+  else process.env.GEMINI_API_KEY = originalGeminiKey;
 });
+test("Gemini para Groq remove modelo primário e preserva opções compatíveis", async () => {
+  let fallbackCalls = 0;
+  let fallbackOptions;
+  providerManager.providers.gemini = {
+    async generateResponse() {
+      return { success: false, error: "timeout", errorCategory: "TIMEOUT" };
+    },
+  };
+  providerManager.providers.groq = {
+    async generateResponse(_question, _chunks, options) {
+      fallbackCalls += 1;
+      fallbackOptions = options;
+      return { success: true, response: "resposta Groq" };
+    },
+  };
+
+  const result = await providerManager.generateResponse("Qual o prazo?", contextChunks, {
+    provider: "gemini",
+    model: "models/gemini-flash-latest",
+    userApiKey: "gemini-user-secret",
+    traceId: "request-123",
+    enableFallback: true,
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(fallbackCalls, 1);
+  assert.equal(fallbackOptions.model, undefined);
+  assert.equal(fallbackOptions.userApiKey, undefined);
+  assert.equal(fallbackOptions.provider, "groq");
+  assert.equal(fallbackOptions.traceId, "request-123");
+  assert.equal(fallbackOptions.enableFallback, true);
+});
+
+test("Groq para Gemini remove modelo primário sem criar loop", async () => {
+  process.env.GEMINI_API_KEY = "gemini-system-key";
+  let fallbackCalls = 0;
+  let fallbackOptions;
+  providerManager.providers.groq = {
+    async generateResponse() {
+      return { success: false, error: "rate limited", errorCategory: "RATE_LIMIT" };
+    },
+  };
+  providerManager.providers.gemini = {
+    async generateResponse(_question, _chunks, options) {
+      fallbackCalls += 1;
+      fallbackOptions = options;
+      return { success: true, response: "resposta Gemini" };
+    },
+  };
+
+  const result = await providerManager.generateResponse("Qual o prazo?", contextChunks, {
+    provider: "groq",
+    model: "openai/gpt-oss-120b",
+    userApiKey: "groq-user-secret",
+    traceId: "request-456",
+    enableFallback: true,
+  });
+
+  assert.equal(result.success, true);
+  assert.equal(fallbackCalls, 1);
+  assert.equal(fallbackOptions.model, undefined);
+  assert.equal(fallbackOptions.userApiKey, undefined);
+  assert.equal(fallbackOptions.provider, "gemini");
+  assert.equal(fallbackOptions.traceId, "request-456");
+  assert.equal(fallbackOptions.enableFallback, true);
+});
+
 
 for (const category of ["TIMEOUT", "RATE_LIMIT", "QUOTA_EXCEEDED", "PROVIDER_UNAVAILABLE", "MODEL_UNAVAILABLE"]) {
   test(`Gemini ${category} chama Groq como fallback`, async () => {

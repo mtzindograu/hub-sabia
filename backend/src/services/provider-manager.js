@@ -89,7 +89,7 @@ class ProviderManager {
 
     logFailure({ provider, result, fallback: true, fallbackProvider: fallbackName });
     if (!fallbackProvider || !fallbackHasSystemKey) return result;
-    const { userApiKey: _drop, ...fallbackOptions } = options;
+    const { userApiKey: _dropUserApiKey, model: _dropModel, ...fallbackOptions } = options;
 
     const fallbackStartedAt = performance.now();
     try {
