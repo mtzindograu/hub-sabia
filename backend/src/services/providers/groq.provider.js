@@ -34,6 +34,7 @@ const withTimeout = (promise, timeoutMs = REQUEST_TIMEOUT_MS) => {
 };
 const elapsedMs = (startedAt) => Math.round((performance.now() - startedAt) * 100) / 100;
 
+
 export class GroqProvider extends BaseProvider {
   /**
    * Get Groq client instance
@@ -146,10 +147,7 @@ export class GroqProvider extends BaseProvider {
         messages: [{ role: 'user', content: 'OK' }],
         max_tokens: 5,
       }), 10000);
-      return {
-        valid: (response.choices?.[0]?.message?.content || "").length > 0,
-        ...(response.choices?.[0]?.message?.content ? {} : { errorCategory: 'INVALID_REQUEST' }),
-      };
+      return { valid: true };
     } catch (error) {
       const normalized = normalizeProviderError(error, 'groq');
       console.error("[Groq] Key validation failed:", normalized.originalMessage);

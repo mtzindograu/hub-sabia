@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, test } from "node:test";
 import assert from "node:assert/strict";
 import providerManager from "../src/services/provider-manager.js";
+import { GroqProvider } from "../src/services/providers/groq.provider.js";
 import { normalizeProviderError, sanitizeProviderMessage } from "../src/utils/provider-utils.js";
 
 const originalProviders = { ...providerManager.providers };
@@ -32,6 +33,20 @@ test("validação válida retorna resultado aceito", async () => {
   assert.deepEqual(await providerManager.validateApiKey("test-key-not-real", "groq"), {
     valid: true,
   });
+});
+test("Groq aceita resposta sem conteúdo na validação", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ choices: [{ message: { content: "" } }] }), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+
+  try {
+    const result = await new GroqProvider().validateApiKey("test-key-not-real");
+    assert.equal(result.valid, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 for (const [{ status, code, message }, expectedCategory] of [
