@@ -164,6 +164,13 @@
         </div>
       </aside>
 
+      <div
+        v-if="!sidebarClosed"
+        class="mobile-sidebar-backdrop"
+        aria-hidden="true"
+        @click="sidebarClosed = true"
+      ></div>
+
       <!-- AI Provider Onboarding Overlay -->
       <main class="chat-main">
         <PlanSelectionModal 
@@ -745,6 +752,10 @@ function autoResize() {
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   flex: 1;
+}
+
+.mobile-sidebar-backdrop {
+  display: none;
 }
 
 /* Header para visitantes */
@@ -1375,8 +1386,17 @@ function autoResize() {
   }
 
   .chat-page {
+    position: relative;
     grid-template-columns: minmax(0, 1fr);
     min-height: calc(100vh - 112px);
+  }
+
+  .mobile-sidebar-backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    background: rgba(15, 23, 42, 0.48);
   }
 
   .chat-sidebar {
@@ -1388,7 +1408,10 @@ function autoResize() {
     position: absolute;
     inset: 0 auto 0 0;
     z-index: 20;
-    width: min(280px, 86vw);
+    width: min(320px, 88vw);
+    max-width: 320px;
+    height: 100%;
+    overflow-y: auto;
     box-shadow: var(--shadow-lg);
   }
 
