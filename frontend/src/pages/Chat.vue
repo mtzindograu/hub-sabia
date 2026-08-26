@@ -372,7 +372,9 @@ const selectedEditalId = ref(null);
 const suggestedQuestions = ref([]);
 const messagesContainer = ref(null);
 const inputField = ref(null);
-const sidebarClosed = ref(false);
+const sidebarClosed = ref(
+  typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches,
+);
 const showScrollButton = ref(false);
 const editaisLoaded = ref(false);
 const isLoggedIn = ref(false);
@@ -721,10 +723,11 @@ function autoResize() {
   }
 }
 </script>
-
 <style scoped>
+
 .chat-wrapper {
   min-height: calc(100vh - 140px);
+  min-width: 0;
   margin: 1rem;
   display: flex;
   flex-direction: column;
@@ -733,9 +736,10 @@ function autoResize() {
 
 .chat-page {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 280px minmax(0, 1fr);
   height: 100%;
   min-height: calc(100vh - 220px);
+  min-width: 0;
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -1010,6 +1014,7 @@ function autoResize() {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
   position: relative;
   overflow: hidden;
 }
@@ -1044,9 +1049,12 @@ function autoResize() {
 .messages-container {
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
   height: 60vh;
   max-height: 60vh;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem;
   scroll-behavior: smooth;
   background: var(--color-bg);
@@ -1219,6 +1227,7 @@ function autoResize() {
 
 /* Input Area */
 .input-area {
+  min-width: 0;
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -1230,7 +1239,8 @@ function autoResize() {
 }
 
 .input-wrapper {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: flex-end;
   background: var(--color-surface-2);
@@ -1247,7 +1257,9 @@ function autoResize() {
 }
 
 .input-wrapper textarea {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
   border: none;
   background: transparent;
   resize: none;
@@ -1354,5 +1366,45 @@ function autoResize() {
   color: var(--color-text-secondary);
   line-height: 1.5;
   margin: 0 0 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .chat-wrapper {
+    min-height: calc(100vh - 96px);
+    margin: 0.5rem;
+  }
+
+  .chat-page {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: calc(100vh - 112px);
+  }
+
+  .chat-sidebar {
+    display: none;
+  }
+
+  .chat-sidebar:not(.closed) {
+    display: flex;
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    width: min(280px, 86vw);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .messages-container {
+    height: auto;
+    max-height: none;
+    padding: 0.75rem;
+  }
+
+  .input-area {
+    padding: 0.75rem;
+  }
+
+  .input-hint {
+    font-size: 0.6875rem;
+    white-space: nowrap;
+  }
 }
 </style>

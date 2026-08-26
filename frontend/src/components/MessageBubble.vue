@@ -187,12 +187,15 @@ function formatProvider(provider) {
 
 <style scoped>
 .message-bubble {
+  min-width: 0;
+  max-width: 100%;
   margin-bottom: 1.5rem;
 }
 
 /* User Message */
 .user-message {
   display: flex;
+  min-width: 0;
   justify-content: flex-end;
   gap: 0.75rem;
 }
@@ -204,11 +207,15 @@ function formatProvider(provider) {
   border-top-right-radius: var(--radius-sm);
   padding: 0.875rem 1.25rem;
   max-width: 70%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .user-message .message-content p {
   margin: 0;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .message-avatar {
@@ -234,6 +241,7 @@ function formatProvider(provider) {
 /* Assistant Message */
 .assistant-message {
   display: flex;
+  min-width: 0;
   gap: 0.75rem;
 }
 
@@ -243,7 +251,8 @@ function formatProvider(provider) {
 }
 
 .message-body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   max-width: calc(100% - 50px);
 }
 
@@ -253,11 +262,17 @@ function formatProvider(provider) {
   border-radius: var(--radius-xl);
   border-top-left-radius: var(--radius-sm);
   padding: 1rem 1.25rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .formatted-text {
   line-height: 1.7;
   color: var(--color-text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .formatted-text :deep(strong) {
@@ -327,15 +342,19 @@ function formatProvider(provider) {
 
 .source-header {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
 }
 
 .source-title {
+  min-width: 0;
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .source-relevance {
@@ -364,22 +383,29 @@ function formatProvider(provider) {
   font-size: 0.75rem;
   color: var(--color-text-secondary);
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Message Meta */
 .message-meta {
   display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   justify-content: space-between;
   align-items: center;
   margin-top: 0.5rem;
   font-size: 0.6875rem;
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
 }
 
 .meta-info {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   align-items: center;
+  min-width: 0;
 }
 
 .provider-badge {
@@ -452,13 +478,17 @@ function formatProvider(provider) {
   border-radius: var(--radius-xl);
   border-top-left-radius: var(--radius-sm);
   padding: 0.875rem 1.25rem;
-  max-width: 70%;
+  max-width: calc(100% - 50px);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .error-message .message-content p {
   margin: 0;
   color: var(--color-danger-700);
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .error-title {
@@ -502,9 +532,23 @@ function formatProvider(provider) {
 
 /* Responsive */
 @media (max-width: 640px) {
+  .message-bubble {
+    margin-bottom: 1rem;
+  }
+
   .user-message .message-content,
-  .assistant-message .message-content {
-    max-width: 85%;
+  .assistant-message .message-content,
+  .error-message .message-content {
+    max-width: calc(100% - 44px);
+    padding: 0.75rem 0.875rem;
+  }
+
+  .assistant-message .message-body {
+    max-width: calc(100% - 44px);
+  }
+
+  .message-meta {
+    align-items: flex-start;
   }
 }
 </style>
